@@ -9,11 +9,11 @@ RUN wget https://github.com/pocketbase/pocketbase/releases/download/v0.22.0/pock
     && unzip pocketbase_0.22.0_linux_amd64.zip \
     && chmod +x pocketbase
 
-# Copy your local DB + uploads
+# Copy local DB + uploads
 COPY pb_data /app/pb_data
 
-# Expose port 8080
+# Expose Render port
 EXPOSE 8080
 
-# Run PocketBase with Render dynamic port + CORS
+# Run PocketBase
 CMD ["sh", "-c", "./pocketbase serve --http=0.0.0.0:$PORT --dir=/app/pb_data --cors=*"]

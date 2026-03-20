@@ -1,0 +1,3430 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Inventaire - InApp Inventory Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="apple-touch-icon" sizes="180x180" href="./assets/images/favicon_io/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon_io/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/images/favicon_io/favicon-16x16.png">
+  <link rel="manifest" href="./assets/images/favicon_io/site.webmanifest">
+   <style>
+  /* Preloader - Clean white background version */
+#preloader {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;           /* Pure white background */
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.7s ease, visibility 0.7s ease;
+}
+
+#preloader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Spinner - subtle, professional look */
+.spinner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+/* Main ring */
+.spinner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 6px solid #e66239;          /* your accent orange */
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
+}
+
+/* Inner subtle ring for depth */
+.spinner::after {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border: 6px solid rgba(230, 98, 57, 0.3);  /* lighter orange */
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1.5s linear infinite reverse;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Optional: small logo or text in center */
+.spinner-logo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+</style>
+
+<!-- Flatpickr CSS + a clean theme -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/material_orange.css">
+
+<style>
+  /* Highlight today's date with a simple circle border only */
+.flatpickr-day.today {
+  position: relative;
+  font-weight: 500;                    /* slightly bolder but not too much */
+}
+
+/* Draw a clean circle around today's date */
+.flatpickr-day.today::before {
+  content: "";
+  position: absolute;
+  inset: -2px;                         /* adjust thickness by changing this value */
+  border: 2px solid #e66239;           /* orange circle, change color if needed */
+  border-radius: 50%;
+  pointer-events: none;                /* doesn't block clicks */
+  box-sizing: border-box;
+}
+
+/* Optional: subtle background hover for today too */
+.flatpickr-day.today:hover {
+  background: rgba(230, 98, 57, 0.08);
+}
+  /* Make calendar popup nicer */
+  .flatpickr-calendar {
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  .flatpickr-day.selected,
+  .flatpickr-day.selected:hover,
+  .flatpickr-day.selected:focus {
+    background: #e66239;
+    border-color: #e66239;
+    color: white;
+  }
+
+  .flatpickr-day:hover {
+    background: rgba(230, 98, 57, 0.12);
+    border-color: #e66239;
+  }
+
+  .flatpickr-current-month {
+    color: #333;
+    font-weight: 600;
+  }
+
+  .flatpickr-weekday {
+    color: #6c757d;
+    font-weight: 500;
+  }
+
+  /* Calendar container - hidden by default */
+  .calendar-popup {
+    position: absolute;
+    z-index: 1000;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.2);
+    padding: 10px;
+    display: none;
+  }
+
+  /* Arrow pointing to button */
+  .calendar-popup::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid white;
+  }
+  
+</style>
+<!-- SweetAlert2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.4/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.4/dist/sweetalert2.all.min.js"></script>
+
+<!-- SheetJS (Excel export) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- jsPDF + AutoTable (PDF export) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+  <div id="overlay" class="overlay"></div>
+  <!-- TOPBAR -->
+  <nav id="topbar" class="navbar bg-white border-bottom fixed-top topbar px-3">
+    <button id="toggleBtn" class="d-none d-lg-inline-flex btn btn-light btn-icon btn-sm ">
+      <i class="ti ti-layout-sidebar-left-expand"></i>
+    </button>
+
+    <!-- MOBILE -->
+    <button id="mobileBtn" class="btn btn-light btn-icon btn-sm d-lg-none me-2">
+      <i class="ti ti-layout-sidebar-left-expand"></i>
+    </button>
+   <div>
+  <!-- Navbar nav -->
+  <ul class="list-unstyled d-flex align-items-center mb-0 gap-1">
+    <!-- Dropdown -->
+    <li class="ms-3 dropdown">
+      <a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <!-- Replaced avatar image with a neutral person icon -->
+        <i class="ti ti-user-circle avatar avatar-sm text-muted" style="font-size: 2rem; line-height: 1;"></i>
+      </a>
+      <div class="dropdown-menu dropdown-menu-end p-0" style="min-width: 200px;">
+        <div>
+          <div class="d-flex gap-3 align-items-center border-dashed border-bottom px-3 py-3">
+            <!-- Replaced avatar image with the same neutral icon (bigger size) -->
+            <i class="ti ti-user-circle avatar avatar-md text-muted" style="font-size: 3rem; line-height: 1;"></i>
+            <div>
+              <h4 class="mb-0 small" id="user-fullname">Chargement...</h4>
+              <p class="mb-0 small" id="user-display">Chargement...</p>
+            </div>
+          </div>
+          <div class="p-3 d-flex flex-column gap-1 small lh-lg">
+            <a href="dashboard"><span>Accueil</span></a>
+            <a href="inventory"><span>Inventaire</span></a>
+            <a href="#" id="logout-btn"><span>Se déconnecter</span></a>
+          </div>
+        </div>
+      </div>
+    </li>
+  </ul>
+</div>
+
+  </nav>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar">
+     <div class="logo-area">
+      <a href="dashboard" class="d-inline-flex"><img src="./assets/images/logo-icon.svg" alt="" width="24">
+        <span class="logo-text ms-2"> <img src="./assets/images/logo.svg" alt=""></span>
+      </a>
+    </div>
+    <ul class="nav flex-column">
+   <br>
+      <li><a class="nav-link" href="dashboard"><i class="ti ti-home"></i><span
+            class="nav-text">Tableau de bord</span></a></li>
+      <li><a class="nav-link active" href="inventory"><i class="ti ti-box-seam"></i><span
+            class="nav-text">Inventaire</span></a></li>
+            
+    </ul>
+
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main id="content" class="content py-10">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="">
+              <h1 class="fs-3 mb-1">Somme totale par point de vente</h1>
+           
+            </div>
+            <div>
+            <button class="btn btn-primary add-btn">Ajouter</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12">
+          <div>
+            <div class="d-flex gap-2 mb-3 flex-wrap justify-content-between">
+         
+              <div class="d-flex gap-2">
+
+               <div class="position-relative d-inline-block">
+  <button class="btn btn-outline-secondary date-trigger">
+    <i class="ti ti-calendar-event"></i> Date
+  </button>
+  <div class="calendar-popup" id="calendar-1">
+    <input type="text" class="d-none" id="date-input-1">
+  </div>
+</div>
+               <button class="btn btn-outline-secondary" onclick="exportExcel()">
+  <i class="ti ti-file-excel"></i> Excel
+</button>
+<button class="btn btn-outline-secondary" onclick="exportPDF()">
+  <i class="ti ti-file-type-pdf"></i> PDF
+</button>
+              </div>
+            </div>
+          </div>
+          <div class="card table-responsive ">
+            <table id="somme-table" class="table mb-0 text-nowrap table-hover">
+              <thead class="table-light border-light">
+                <tr>
+                  <th>Dates</th>
+                  <th>Total</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                
+             
+              </tbody>
+     <tfoot>
+<tr id="column-totals-row"></tr>
+</tfoot>
+            </table>
+          </div>
+          <!-- Pagination for the first table only -->
+<div id="somme-pagination" class="d-flex justify-content-center mt-4">
+  <nav aria-label="Pagination des ventes par point de vente">
+    <ul class="pagination pagination-sm">
+      <!-- Will be filled dynamically by JavaScript -->
+    </ul>
+  </nav>
+</div>
+
+
+        </div>
+
+      </div>
+    <div class="row">
+        <div class="col-12">
+<footer class="text-center py-2 mt-6 text-secondary ">
+     
+      </footer>
+        </div>
+
+      </div>
+
+    </div>
+     <div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="fs-3 mb-1">Achats</h1>
+        </div>
+        <div>
+          <button class="btn btn-primary achats-add-btn">Ajouter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex gap-2 mb-3 flex-wrap justify-content-between">
+        <div class="d-flex gap-2">
+          <div class="position-relative d-inline-block">
+            <button class="btn btn-outline-secondary achats-date-trigger">
+              <i class="ti ti-calendar-event"></i> Date
+            </button>
+            <div class="calendar-popup">
+              <input type="text" class="d-none" id="achats-date-input">
+            </div>
+          </div>
+          <button class="btn btn-outline-secondary" onclick="exportExcel('achats')">
+            <i class="ti ti-file-excel"></i> Excel
+          </button>
+          <button class="btn btn-outline-secondary" onclick="exportPDF('achats')">
+            <i class="ti ti-file-type-pdf"></i> PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="card table-responsive">
+        <table id="achats-table" class="table mb-0 text-nowrap table-hover">
+          <thead class="table-light border-light">
+            <tr id="achats-thead-tr">
+              <th>Dates</th>
+              <!-- Dynamic columns will be inserted here -->
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr id="achats-totals-row"></tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div id="achats-pagination" class="d-flex justify-content-center mt-4">
+        <nav aria-label="Pagination achats">
+          <ul class="pagination pagination-sm"></ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <footer class="text-center py-2 mt-6 text-secondary"></footer>
+    </div>
+  </div>
+</div>
+ <div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="fs-3 mb-1">Dépenses</h1>
+        </div>
+        <div>
+          <button class="btn btn-primary depenses-add-btn">Ajouter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex gap-2 mb-3 flex-wrap justify-content-between">
+        <div class="d-flex gap-2">
+          <div class="position-relative d-inline-block">
+            <button class="btn btn-outline-secondary depenses-date-trigger">
+              <i class="ti ti-calendar-event"></i> Date
+            </button>
+            <div class="calendar-popup">
+              <input type="text" class="d-none" id="depenses-date-input">
+            </div>
+          </div>
+          <button class="btn btn-outline-secondary" onclick="exportExcel('depenses')">
+            <i class="ti ti-file-excel"></i> Excel
+          </button>
+          <button class="btn btn-outline-secondary" onclick="exportPDF('depenses')">
+            <i class="ti ti-file-type-pdf"></i> PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="card table-responsive">
+        <table id="depenses-table" class="table mb-0 text-nowrap table-hover">
+          <thead class="table-light border-light">
+            <tr id="depenses-thead-tr">
+              <th>Dates</th>
+              <!-- Dynamic columns inserted by JS -->
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr id="depenses-totals-row"></tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div id="depenses-pagination" class="d-flex justify-content-center mt-4">
+        <nav aria-label="Pagination dépenses">
+          <ul class="pagination pagination-sm"></ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <footer class="text-center py-2 mt-6 text-secondary"></footer>
+    </div>
+  </div>
+</div>
+     <div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="fs-3 mb-1">Dettes</h1>
+        </div>
+        <div>
+          <button class="btn btn-primary dettes-add-btn">Ajouter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex gap-2 mb-3 flex-wrap justify-content-between">
+        <div class="d-flex gap-2">
+          <div class="position-relative d-inline-block">
+            <button class="btn btn-outline-secondary dettes-date-trigger">
+              <i class="ti ti-calendar-event"></i> Date
+            </button>
+            <div class="calendar-popup">
+              <input type="text" class="d-none" id="dettes-date-input">
+            </div>
+          </div>
+          <button class="btn btn-outline-secondary" onclick="exportExcel('dettes')">
+            <i class="ti ti-file-excel"></i> Excel
+          </button>
+          <button class="btn btn-outline-secondary" onclick="exportPDF('dettes')">
+            <i class="ti ti-file-type-pdf"></i> PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="card table-responsive">
+        <table id="dettes-table" class="table mb-0 text-nowrap table-hover">
+          <thead class="table-light border-light">
+            <tr id="dettes-thead-tr">
+              <th>Dates</th>
+              <!-- Dynamic columns will be inserted here by JS -->
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr id="dettes-totals-row"></tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div id="dettes-pagination" class="d-flex justify-content-center mt-4">
+        <nav aria-label="Pagination dettes">
+          <ul class="pagination pagination-sm"></ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <footer class="text-center py-2 mt-6 text-secondary"></footer>
+    </div>
+  </div>
+</div>
+
+     <div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="fs-3 mb-1">MANDELA</h1>
+        </div>
+        <div>
+          <button class="btn btn-primary mandela-add-btn">Ajouter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex gap-2 mb-3 flex-wrap justify-content-between">
+        <div class="d-flex gap-2">
+          <div class="position-relative d-inline-block">
+            <button class="btn btn-outline-secondary mandela-date-trigger">
+              <i class="ti ti-calendar-event"></i> Date
+            </button>
+            <div class="calendar-popup">
+              <input type="text" class="d-none" id="mandela-date-input">
+            </div>
+          </div>
+          <button class="btn btn-outline-secondary" onclick="exportExcel('mandela')">
+            <i class="ti ti-file-excel"></i> Excel
+          </button>
+          <button class="btn btn-outline-secondary" onclick="exportPDF('mandela')">
+            <i class="ti ti-file-type-pdf"></i> PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="card table-responsive">
+        <table id="mandela-table" class="table mb-0 text-nowrap table-hover">
+          <thead class="table-light border-light">
+            <tr id="mandela-thead-tr">
+              <th>Dates</th>
+              <!-- Colonnes dynamiques insérées par JS -->
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr id="mandela-totals-row"></tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div id="mandela-pagination" class="d-flex justify-content-center mt-4">
+        <nav aria-label="Pagination Mandela">
+          <ul class="pagination pagination-sm"></ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <footer class="text-center py-2 mt-6 text-secondary"></footer>
+    </div>
+  </div>
+</div>
+  </main>
+  <!-- Bootstrap JS -->
+  <script src="./assets/js/main.js" type="module"></script>
+
+  <!-- Flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <!-- SweetAlert2, SheetJS, jsPDF + AutoTable -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.4/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
+<script>
+    const PB_URL = 'http://127.0.0.1:8090';
+    let ventesData = [];
+    let pointsVente = [];
+    let isAdmin = false;
+    let displayedData = [];
+    let selectedDateRange = 'Toutes les dates';
+    let currentPage = 1;
+const rowsPerPage = 31;
+let totalPages = 1;
+
+    window.addEventListener('load', async function () {
+      const token = localStorage.getItem('pb_token');
+      if (!token) {
+        window.location.href = '/';
+        return;
+      }
+
+      const userData = localStorage.getItem('pb_user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        const fullName = `${user.firstName || 'Utilisateur'} ${user.lastName ? user.lastName.charAt(0) + '.' : ''}`.trim();
+        document.getElementById('user-fullname').textContent = fullName;
+        document.getElementById('user-display').textContent = user.role === 'admin' ? 'Administrateur' : 'Utilisateur';
+        isAdmin = user.role === 'admin';
+      }
+
+      document.getElementById('logout-btn')?.addEventListener('click', e => {
+        e.preventDefault();
+        localStorage.clear();
+        window.location.href = '/';
+      });
+
+      const preloader = document.getElementById('preloader');
+       if (preloader) {
+      setTimeout(() => preloader.classList.add('hidden'), 600);
+    }
+
+      await loadPointsVente();
+      await loadVentesData();
+      await loadArticlesAchats();
+      await loadAchatsData();
+      await loadArticlesDepenses();
+      renderDepensesHeaders();
+      await loadDepensesData();
+
+
+      renderDynamicHeaders();      // Somme
+      renderAchatsHeaders();       // Achats
+      // Pour Dettes
+await loadDettesPersonnes();
+renderDettesHeaders();
+await loadDettesData();
+
+
+
+// Flatpickr pour le filtre date Dettes
+flatpickr(".dettes-date-trigger", {
+  mode: "range",
+  dateFormat: "d/m/Y",
+  defaultDate: [new Date(), new Date()],
+  onChange: (selectedDates) => {
+    if (selectedDates.length === 2) {
+      filterDettesByDateRange(selectedDates[0], selectedDates[1]);
+    } else if (selectedDates.length === 1) {
+      filterDettesByDateRange(selectedDates[0], selectedDates[0]);
+    } else {
+      renderDettesTable(dettesData);
+    }
+  }
+});
+// Pour MANDELA
+await loadMandelaItems();
+renderMandelaHeaders();
+await loadMandelaData();
+
+// Bouton Ajouter MANDELA
+const mandelaAddBtn = document.querySelector('.mandela-add-btn');
+if (mandelaAddBtn) {
+  mandelaAddBtn.style.display = isAdmin ? 'inline-block' : 'none';
+  mandelaAddBtn.addEventListener('click', openAddMandelaModal);
+  toggleMandelaAddButton(); // initial check
+}
+
+// Flatpickr pour filtre date MANDELA
+flatpickr(".mandela-date-trigger", {
+  mode: "range",
+  dateFormat: "d/m/Y",
+  defaultDate: [new Date(), new Date()],
+  onChange: (selectedDates) => {
+    if (selectedDates.length === 2) {
+      filterMandelaByDateRange(selectedDates[0], selectedDates[1]);
+    } else if (selectedDates.length === 1) {
+      filterMandelaByDateRange(selectedDates[0], selectedDates[0]);
+    } else {
+      renderMandelaTable(mandelaData);
+    }
+  }
+});
+
+      const addBtn = document.querySelector('.add-btn');
+      if (addBtn) {
+        addBtn.style.display = isAdmin ? 'inline-block' : 'none';
+        addBtn.addEventListener('click', () => openAddModal());
+        toggleAddButton();
+      }
+      
+      // Add button for Achats
+     const achatsAddBtn = document.querySelector('.achats-add-btn');
+if (achatsAddBtn) {
+  achatsAddBtn.style.display = isAdmin ? 'inline-block' : 'none';
+  toggleAchatsAddButton();
+}
+// Bouton Ajouter Dettes
+const dettesAddBtn = document.querySelector('.dettes-add-btn');
+if (dettesAddBtn) {
+  dettesAddBtn.style.display = isAdmin ? 'inline-block' : 'none';
+  dettesAddBtn.addEventListener('click', openAddDettesModal);
+  toggleDettesAddButton();
+}
+// Dépenses add button listener
+const depensesAddBtn = document.querySelector('.depenses-add-btn');
+if (depensesAddBtn) {
+  depensesAddBtn.style.display = isAdmin ? 'inline-block' : 'none';
+  depensesAddBtn.addEventListener('click', openAddDepensesModal);
+  toggleDepensesAddButton();
+}
+
+      flatpickr(".date-trigger", {
+        mode: "range",
+        dateFormat: "d/m/Y",
+        defaultDate: [new Date(), new Date()],
+        onChange: (selectedDates) => {
+          let rangeText = 'Toutes les dates';
+          if (selectedDates.length === 2) {
+            const s = selectedDates[0].toLocaleDateString('fr-FR');
+            const e = selectedDates[1].toLocaleDateString('fr-FR');
+            rangeText = `Du ${s} au ${e}`;
+            filterTableByDateRange(selectedDates[0], selectedDates[1]);
+          } else if (selectedDates.length === 1) {
+            const d = selectedDates[0].toLocaleDateString('fr-FR');
+            rangeText = `Le ${d}`;
+            filterTableByDateRange(selectedDates[0], selectedDates[0]);
+          }
+          selectedDateRange = rangeText;
+        }
+      });
+    });
+    function renderDepensesTable(data) {
+
+  displayedDepenses = data || [];
+
+  const tbody = document.querySelector('#depenses-table tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  const colCount = articlesDepenses.length > 0 ? articlesDepenses.length : 1;
+  const numCols = 1 + colCount + 1 + (isAdmin ? 1 : 0);
+
+  if (data.length === 0) {
+    tbody.innerHTML =
+      `<tr><td colspan="${numCols}" class="text-center text-muted">Aucune donnée pour la période sélectionnée</td></tr>`;
+    return;
+  }
+
+  data.forEach(item => {
+
+    const tr = document.createElement('tr');
+    tr.className = 'align-middle';
+
+    let rowHtml =
+      `<td>${new Date(item.date).toLocaleDateString('fr-FR')}</td>`;
+
+    let rowTotal = 0;
+
+    articlesDepenses.forEach(article => {
+
+      const field = getFieldName(article.name);
+
+      const value =
+        (item[field] !== undefined && item[field] !== null)
+          ? item[field]
+          : 0;
+
+      rowTotal += Number(value);
+
+      rowHtml += `<td>${value}</td>`;
+    });
+
+    if (articlesDepenses.length === 0) {
+      rowHtml += `<td>-</td>`;
+    }
+
+    rowHtml += `<td>${rowTotal.toLocaleString('fr-FR')} FC</td>`;
+
+    if (isAdmin) {
+      rowHtml += `
+        <td>
+          <a href="#" class="edit-depenses-btn" data-id="${item.id}">
+            <i class="ti ti-edit"></i>
+          </a>
+          <a href="#" class="delete-depenses-btn text-danger ms-2" data-id="${item.id}">
+            <i class="ti ti-trash"></i>
+          </a>
+        </td>
+      `;
+    }
+
+    tr.innerHTML = rowHtml;
+    tbody.appendChild(tr);
+  });
+}
+    function renderDepensesHeaders() {
+  const tr = document.querySelector('#depenses-table thead tr');
+  if (!tr) return;
+
+  while (tr.children.length > 1) {
+    tr.removeChild(tr.lastChild);
+  }
+
+  if (articlesDepenses.length === 0) {
+    const th = document.createElement('th');
+    th.textContent = '(Aucune dépense)';
+    tr.appendChild(th);
+  } else {
+    articlesDepenses.forEach(article => {
+      const th = document.createElement('th');
+      th.textContent = article.display_name || article.name;
+      tr.appendChild(th);
+    });
+  }
+
+  const totalTh = document.createElement('th');
+  totalTh.textContent = 'Total';
+  tr.appendChild(totalTh);
+
+  if (isAdmin) {
+    const actionTh = document.createElement('th');
+    actionTh.textContent = 'Action';
+    tr.appendChild(actionTh);
+  }
+}
+function openAddDepensesModal() {
+
+  let html = `
+  <div class="text-start">
+  <label>Date</label>
+  <input class="form-control mb-3" value="${new Date().toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  articlesDepenses.forEach(article => {
+
+    const field = getFieldName(article.name);
+
+    html += `
+    <label>${article.display_name}</label>
+    <input id="add-dep-${field}" type="number" class="form-control mb-2" placeholder="0">
+    `;
+  });
+
+  html += '</div>';
+
+  Swal.fire({
+    title: "Ajouter Dépense",
+    html,
+    showCancelButton: true,
+    confirmButtonText: "Enregistrer",
+
+    preConfirm: () => {
+
+      const payload = { date: new Date().toISOString() };
+
+      articlesDepenses.forEach(article => {
+
+        const field = getFieldName(article.name);
+
+        payload[field] =
+          Number(document.getElementById(`add-dep-${field}`).value) || 0;
+      });
+
+      return payload;
+    }
+
+  }).then(async result => {
+
+    if (result.isConfirmed) {
+
+    try {
+    const r = await fetch(`${PB_URL}/api/collections/depenses_journalier/records`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+      },
+      body: JSON.stringify(result.value)
+    });
+    if (!r.ok) throw await r.text();
+    Swal.fire('Succès', 'Dépense ajoutée !', 'success');
+    await loadDepensesData();           // reload data
+    openAddDepensesModal          // hide button if today exists
+  } catch (e) {
+    Swal.fire('Erreur', e.message, 'error');
+  }
+      
+    }
+
+  });
+}
+function toggleDepensesAddButton() {
+
+  const btn = document.querySelector('.depenses-add-btn');
+
+  if (!btn || !isAdmin) return;
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const exists = depensesData.some(item => {
+
+    const itemDate = new Date(item.date).toISOString().split('T')[0];
+
+    return itemDate === today;
+  });
+
+  btn.style.display = exists ? 'none' : 'inline-block';
+}
+// Plus besoin de charger mandela_items car on utilise mandelaColumns en dur
+async function loadMandelaItems() {
+  // Fonction vide intentionnellement
+  return;
+}
+
+async function loadPointsVente() {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/points_vente/records?sort=name`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status} - ${await res.text()}`);
+        const data = await res.json();
+        pointsVente = data.items || [];
+        console.log("Points chargés :", pointsVente.map(p => ({
+          name: p.name,
+          display_name: p.display_name
+        })));
+      } catch (err) {
+        console.error("Erreur chargement points_vente:", err);
+        Swal.fire('Erreur', 'Impossible de charger les points de vente\n' + err.message, 'error');
+        pointsVente = [];
+      }
+    }
+
+    function renderDynamicHeaders() {
+      const theadTr = document.querySelector('#somme-table thead tr');
+      if (!theadTr) return;
+
+      // Remove everything except the first column (Dates)
+      while (theadTr.children.length > 1) {
+        theadTr.removeChild(theadTr.lastChild);
+      }
+
+      // Dynamic point columns (or placeholder)
+      if (pointsVente.length === 0) {
+        const th = document.createElement('th');
+        th.textContent = '(Aucun point configuré)';
+        theadTr.appendChild(th);
+      } else {
+        pointsVente.forEach(point => {
+          const th = document.createElement('th');
+          th.textContent = point.display_name || point.name || '(nom manquant)';
+          theadTr.appendChild(th);
+        });
+      }
+
+      // Total column
+      const totalTh = document.createElement('th');
+      totalTh.textContent = 'Total';
+      theadTr.appendChild(totalTh);
+
+      // Action column ONLY for admin
+      if (isAdmin) {
+        const actionTh = document.createElement('th');
+        actionTh.textContent = 'Action';
+        theadTr.appendChild(actionTh);
+      }
+    }
+
+    async function loadVentesData() {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/ventes_points_vente/records?sort=-date`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        ventesData = data.items || [];
+        renderTable(ventesData);
+        toggleAddButton();
+      } catch (err) {
+        Swal.fire('Erreur', 'Impossible de charger les ventes', 'error');
+      }
+    }
+
+    function getFieldName(name) {
+      if (!name) return 'inconnu';
+      return name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
+    }
+
+    function calculateRowTotal(item) {
+      if (pointsVente.length === 0) {
+        return (item.quartier1 || 0) + (item.selembao || 0) + (item.victoire || 0) +
+               (item.zando || 0) + (item.matete || 0) + (item.rond_point_ngaba || 0);
+      }
+      return pointsVente.reduce((sum, point) => {
+        const field = getFieldName(point.name);
+        return sum + (Number(item[field]) || 0);
+      }, 0);
+    }
+
+    function calculateColumnTotals(data) {
+      const totals = {};
+      pointsVente.forEach(point => {
+        const field = getFieldName(point.name);
+        totals[field] = 0;
+      });
+
+      data.forEach(item => {
+        pointsVente.forEach(point => {
+          const field = getFieldName(point.name);
+          totals[field] += Number(item[field]) || 0;
+        });
+      });
+
+      return totals;
+    }
+
+    function renderTable(data) {
+  displayedData = data || [];
+
+  const tbody = document.querySelector('#somme-table tbody');
+  tbody.innerHTML = '';
+
+  const pointColCount = pointsVente.length > 0 ? pointsVente.length : 1;
+  const numCols = 1 + pointColCount + 1 + (isAdmin ? 1 : 0);
+
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${numCols}" class="text-center text-muted">Aucune donnée pour la période sélectionnée</td></tr>`;
+    updateColumnTotals({});
+    renderPagination(0); // hide pagination
+    return;
+  }
+
+  // ── Pagination logic ───────────────────────────────────────
+  const totalRows = data.length;
+  totalPages = Math.ceil(totalRows / rowsPerPage);
+
+  // Calculate start and end index for current page
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pageData = data.slice(start, end);
+
+  let grandTotal = 0;
+
+  // Render only the rows for the current page
+  pageData.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.className = 'align-middle';
+
+    let rowHtml = `<td><p>${new Date(item.date).toLocaleDateString('fr-FR')}</p></td>`;
+
+    pointsVente.forEach(point => {
+      const field = getFieldName(point.name);
+      const value = (item[field] !== undefined && item[field] !== null) ? item[field] : '-';
+      rowHtml += `<td>${value}</td>`;
+    });
+
+    if (pointsVente.length === 0) {
+      rowHtml += `<td>-</td>`;
+    }
+
+    const rowTotal = calculateRowTotal(item);
+    rowHtml += `<td>${rowTotal.toLocaleString('fr-FR')} FC</td>`;
+
+    if (isAdmin) {
+      rowHtml += `
+        <td>
+          <a href="#" class="edit-btn" data-id="${item.id}"><i class="ti ti-edit"></i></a>
+          <a href="#" class="delete-btn text-danger ms-2" data-id="${item.id}"><i class="ti ti-trash"></i></a>
+        </td>
+      `;
+    }
+
+    tr.innerHTML = rowHtml;
+    tbody.appendChild(tr);
+    grandTotal += rowTotal; // note: this is page total, not overall
+  });
+
+  // Still calculate full column totals (from all data, not just page)
+  const columnTotals = calculateColumnTotals(data);
+  updateColumnTotals(columnTotals);
+
+  // Re-attach event listeners (because tbody was cleared)
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      openEditModal(e.currentTarget.dataset.id);
+    });
+  });
+
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      confirmDelete(e.currentTarget.dataset.id);
+    });
+  });
+
+  // Render pagination controls
+  renderPagination(totalRows);
+}
+function renderPagination(totalRows) {
+  const paginationUl = document.querySelector('#somme-pagination ul');
+  if (!paginationUl) return;
+
+  paginationUl.innerHTML = '';
+
+  if (totalRows <= rowsPerPage) {
+    // No need for pagination if ≤ 31 rows
+    document.getElementById('somme-pagination').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('somme-pagination').style.display = 'flex';
+
+  // Previous button
+  const prevLi = document.createElement('li');
+  prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+  prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Précédent">Précédent</a>`;
+  prevLi.addEventListener('click', e => {
+    e.preventDefault();
+    if (currentPage > 1) {
+      currentPage--;
+      renderTable(displayedData); // re-render with new page
+    }
+  });
+  paginationUl.appendChild(prevLi);
+
+  // Page numbers (simple: show all if < 10 pages, else ellipsis logic can be added later)
+  for (let i = 1; i <= totalPages; i++) {
+    const li = document.createElement('li');
+    li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+    li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+    li.addEventListener('click', e => {
+      e.preventDefault();
+      currentPage = i;
+      renderTable(displayedData);
+    });
+    paginationUl.appendChild(li);
+  }
+
+  // Next button
+  const nextLi = document.createElement('li');
+  nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+  nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Suivant">Suivant</a>`;
+  nextLi.addEventListener('click', e => {
+    e.preventDefault();
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderTable(displayedData);
+    }
+  });
+  paginationUl.appendChild(nextLi);
+}
+    function updateColumnTotals(columnTotals) {
+      const existingTotalsRow = document.getElementById('column-totals-row');
+      if (existingTotalsRow) existingTotalsRow.remove();
+
+      const tfoot = document.querySelector('#somme-table tfoot');
+      if (!tfoot) return;
+
+      const tr = document.createElement('tr');
+      tr.id = 'column-totals-row';
+      tr.innerHTML = `<td class="border-bottom-0 fw-bold">Totals</td>`;
+
+      pointsVente.forEach(point => {
+        const field = getFieldName(point.name);
+        const total = columnTotals[field] || 0;
+        tr.innerHTML += `<td class="fw-bold">${total.toLocaleString('fr-FR')} FC</td>`;
+      });
+
+      if (pointsVente.length === 0) {
+        tr.innerHTML += `<td class="fw-bold">0 FC</td>`;
+      }
+
+      const grandTotal = Object.values(columnTotals).reduce((a, b) => a + b, 0);
+      tr.innerHTML += `<td class="fw-bold">${grandTotal.toLocaleString('fr-FR')} FC</td>`;
+
+      if (isAdmin) {
+        tr.innerHTML += `<td></td>`;
+      }
+
+      tfoot.prepend(tr);
+    }
+
+    function filterTableByDateRange(start, end) {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      const filtered = ventesData.filter(item => {
+        const itemDate = new Date(item.date);
+        return itemDate >= start && itemDate <= end;
+      });
+      currentPage = 1;
+      renderTable(filtered);
+    }
+
+    function toggleAddButton() {
+      const addBtn = document.querySelector('.add-btn');
+      if (!addBtn || !isAdmin) return;
+
+      const today = new Date().toISOString().split('T')[0];
+      const hasTodayRecord = ventesData.some(item => {
+        const itemDate = new Date(item.date).toISOString().split('T')[0];
+        return itemDate === today;
+      });
+
+      addBtn.style.display = hasTodayRecord ? 'none' : 'inline-block';
+    }
+
+    function openAddModal() {
+      if (pointsVente.length === 0) {
+        Swal.fire('Attention', 'Aucun point de vente configuré dans PocketBase.', 'warning');
+        return;
+      }
+
+      let html = `
+        <div class="text-start">
+          <label>Date (aujourd'hui)</label>
+          <input id="add-date" class="form-control mb-3" value="${new Date().toLocaleDateString('fr-FR')}" disabled>
+      `;
+
+      pointsVente.forEach(point => {
+        const field = getFieldName(point.name);
+        const label = point.display_name || point.name || '(nom manquant)';
+        html += `
+          <label>${label}</label>
+          <input id="add-${field}" type="number" class="form-control mb-2" placeholder="0" min="0">
+        `;
+      });
+
+      html += '</div>';
+
+      Swal.fire({
+        title: 'Ajouter une nouvelle entrée',
+        html,
+        showCancelButton: true,
+        confirmButtonText: 'Enregistrer',
+        cancelButtonText: 'Annuler',
+        preConfirm: () => {
+          const payload = { date: new Date().toISOString() };
+          pointsVente.forEach(point => {
+            const field = getFieldName(point.name);
+            const val = document.getElementById(`add-${field}`);
+            payload[field] = val ? Number(val.value) || 0 : 0;
+          });
+          return payload;
+        }
+      }).then(async result => {
+        if (result.isConfirmed) {
+          try {
+            const res = await fetch(`${PB_URL}/api/collections/ventes_points_vente/records`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+              },
+              body: JSON.stringify(result.value)
+            });
+            if (!res.ok) {
+              const errText = await res.text();
+              throw new Error(errText);
+            }
+            Swal.fire('Succès', 'Entrée ajoutée !', 'success');
+            loadVentesData();
+          } catch (err) {
+            Swal.fire('Erreur', 'Échec de l\'ajout<br>' + err.message, 'error');
+          }
+        }
+      });
+    }
+
+    async function openEditModal(id) {
+      const item = ventesData.find(i => i.id === id);
+      if (!item) return;
+
+      let html = `
+        <div class="text-start">
+          <label>Date</label>
+          <input id="edit-date" class="form-control mb-3" value="${new Date(item.date).toLocaleDateString('fr-FR')}" disabled>
+      `;
+
+      pointsVente.forEach(point => {
+        const field = getFieldName(point.name);
+        const label = point.display_name || point.name || '(nom manquant)';
+        html += `
+          <label>${label}</label>
+          <input id="edit-${field}" type="number" class="form-control mb-2" value="${item[field] || 0}" min="0">
+        `;
+      });
+
+      html += '</div>';
+
+      Swal.fire({
+        title: 'Modifier l\'entrée',
+        html,
+        showCancelButton: true,
+        confirmButtonText: 'Mettre à jour',
+        cancelButtonText: 'Annuler',
+        preConfirm: () => {
+          const payload = {};
+          pointsVente.forEach(point => {
+            const field = getFieldName(point.name);
+            const val = document.getElementById(`edit-${field}`);
+            payload[field] = val ? Number(val.value) || 0 : 0;
+          });
+          return payload;
+        }
+      }).then(async result => {
+        if (result.isConfirmed) {
+          try {
+            const res = await fetch(`${PB_URL}/api/collections/ventes_points_vente/records/${id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+              },
+              body: JSON.stringify(result.value)
+            });
+            if (!res.ok) throw new Error(await res.text());
+            Swal.fire('Succès', 'Entrée mise à jour !', 'success');
+            loadVentesData();
+          } catch (err) {
+            Swal.fire('Erreur', 'Échec de la mise à jour<br>' + err.message, 'error');
+          }
+        }
+      });
+    }
+
+    function confirmDelete(id) {
+      Swal.fire({
+        title: 'Confirmer la suppression ?',
+        text: "Cette action est irréversible !",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Oui, supprimer',
+        cancelButtonText: 'Annuler'
+      }).then(async result => {
+        if (result.isConfirmed) {
+          try {
+            const res = await fetch(`${PB_URL}/api/collections/ventes_points_vente/records/${id}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+            });
+            if (!res.ok) throw new Error(await res.text());
+            Swal.fire('Supprimé !', 'Entrée supprimée.', 'success');
+            loadVentesData();
+          } catch (err) {
+            Swal.fire('Erreur', 'Échec de la suppression<br>' + err.message, 'error');
+          }
+        }
+      });
+    }
+function exportExcel(type = 'somme') {
+  if (type === 'mandela') {
+    let data = displayedMandela?.length ? displayedMandela : mandelaData;
+    if (!data?.length) {
+      Swal.fire({ title: 'Aucune donnée', text: 'Rien à exporter.', icon: 'info' });
+      return;
+    }
+
+    // Trier du plus récent au plus ancien (comme le tableau)
+    const sortedData = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    let previousRestantV = 0;
+    let previousRestantC = 0;
+
+    const exportRows = sortedData.map(item => {
+      const livV = Number(item.nombre_de_pieces_livrees_vanille || 0);
+      const venV = Number(item.nombre_de_pieces_vendues_vanille || 0);
+      const degV = Number(item.nombre_de_piece_degradees_vanille || 0);
+      const restantV = previousRestantV + livV - venV - degV;
+
+      const livC = Number(item.nombre_de_pieces_livrees_chocolat || 0);
+      const venC = Number(item.nombre_de_pieces_vendues_chocolat || 0);
+      const degC = Number(item.nombre_de_piece_degradees_chocolat || 0);
+      const restantC = previousRestantC + livC - venC - degC;
+
+      previousRestantV = restantV;
+      previousRestantC = restantC;
+
+      const pourV = (venV * 0.2).toFixed(2);
+      const pourC = (venC * 0.14).toFixed(2);
+      const versV = venV * 1000;
+      const versC = venC * 2500;
+
+      return {
+        "Dates": new Date(item.date).toLocaleDateString('fr-FR'),
+        "Nombre de pièce restantes": `Vanille: ${restantV}\nChocolat: ${restantC}`,
+        "Nombre de pièce livrée": `Vanille: ${livV}\nChocolat: ${livC}`,
+        "Nombre de pièce Dégradées": `Vanille: ${degV}\nChocolat: ${degC}`,
+        "Nombre de pièce Vendues": `Vanille: ${venV}\nChocolat: ${venC}`,
+        "% (pourcentage)": `Vanille: ${pourV}%\nChocolat: ${pourC}%`,
+        "Dépenses": Number(item.depenses || 0),
+        "Versement": `Vanille: ${versV.toLocaleString('fr-FR')} FC\nChocolat: ${versC.toLocaleString('fr-FR')} FC`
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Mandela");
+    XLSX.writeFile(wb, `mandela_${new Date().toISOString().slice(0,10)}.xlsx`);
+    return;
+  }
+
+  // ==================== AUTRES TYPES (laisser tel quel) ====================
+  let data, fields, filename, sheetName;
+  if (type === 'somme') {
+    data = displayedData?.length ? displayedData : ventesData;
+    fields = pointsVente;
+    filename = `somme_par_point_de_vente_${new Date().toISOString().slice(0,10)}.xlsx`;
+    sheetName = "Somme";
+  } else if (type === 'achats') {
+    data = displayedAchats?.length ? displayedAchats : achatsData;
+    fields = articlesAchats;
+    filename = `achats_${new Date().toISOString().slice(0,10)}.xlsx`;
+    sheetName = "Achats";
+  } else if (type === 'depenses') {
+    data = displayedDepenses?.length ? displayedDepenses : depensesData;
+    fields = articlesDepenses;
+    filename = `depenses_${new Date().toISOString().slice(0,10)}.xlsx`;
+    sheetName = "Dépenses";
+  } else if (type === 'dettes') {
+    data = displayedDettes?.length ? displayedDettes : dettesData;
+    fields = dettesPersonnes;
+    filename = `dettes_${new Date().toISOString().slice(0,10)}.xlsx`;
+    sheetName = "Dettes";
+  } else {
+    Swal.fire('Erreur', 'Type d\'export inconnu', 'error');
+    return;
+  }
+
+  if (!data?.length) {
+    Swal.fire({ title: 'Aucune donnée', text: 'Rien à exporter.', icon: 'info' });
+    return;
+  }
+
+  const exportRows = data.map(item => {
+    const row = { Date: new Date(item.date).toLocaleDateString('fr-FR') };
+    fields.forEach(f => {
+      const key = getFieldName(f.name);
+      row[f.display_name || f.name] = Number(item[key]) || 0;
+    });
+    return row;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(exportRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename);
+}
+
+function exportPDF(type = 'somme') {
+  let data, fields, title;
+
+  // ====================== MANDELA PDF (Version finale corrigée) ======================
+  if (type === 'mandela') {
+    data = displayedMandela?.length ? displayedMandela : mandelaData;
+    if (!data?.length) {
+      Swal.fire({ title: 'Aucune donnée', text: 'Rien à exporter.', icon: 'info' });
+      return;
+    }
+
+    // 1. Trier du PLUS ANCIEN au PLUS RÉCENT pour calculer le cumul correctement
+    const sortedForCalc = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    let previousRestantV = 0;
+    let previousRestantC = 0;
+
+    // Calcul du stock cumulé
+    const calculatedData = sortedForCalc.map(item => {
+      const livV = Number(item.nombre_de_pieces_livrees_vanille || 0);
+      const venV = Number(item.nombre_de_pieces_vendues_vanille || 0);
+      const degV = Number(item.nombre_de_piece_degradees_vanille || 0);
+      const restantV = previousRestantV + livV - venV - degV;
+
+      const livC = Number(item.nombre_de_pieces_livrees_chocolat || 0);
+      const venC = Number(item.nombre_de_pieces_vendues_chocolat || 0);
+      const degC = Number(item.nombre_de_piece_degradees_chocolat || 0);
+      const restantC = previousRestantC + livC - venC - degC;
+
+      previousRestantV = restantV;
+      previousRestantC = restantC;
+
+      return { ...item, restantV_calc: restantV, restantC_calc: restantC };
+    });
+
+    // 2. Trier du PLUS RÉCENT au PLUS ANCIEN pour l'affichage
+    const sortedForDisplay = calculatedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const tableBody = sortedForDisplay.map(item => {
+      const venV = Number(item.nombre_de_pieces_vendues_vanille || 0);
+      const venC = Number(item.nombre_de_pieces_vendues_chocolat || 0);
+
+      const pourV = (venV * 0.2).toFixed(2);
+      const pourC = (venC * 0.14).toFixed(2);
+      const versV = venV * 1000;
+      const versC = venC * 2500;
+
+      return [
+        new Date(item.date).toLocaleDateString('fr-FR'),
+        `Vanille: ${item.restantV_calc}\nChocolat: ${item.restantC_calc}`,
+        `Vanille: ${Number(item.nombre_de_pieces_livrees_vanille || 0)}\nChocolat: ${Number(item.nombre_de_pieces_livrees_chocolat || 0)}`,
+        `Vanille: ${Number(item.nombre_de_piece_degradees_vanille || 0)}\nChocolat: ${Number(item.nombre_de_piece_degradees_chocolat || 0)}`,
+        `Vanille: ${venV}\nChocolat: ${venC}`,
+        `Vanille: ${pourV}%\nChocolat: ${pourC}%`,
+        Number(item.depenses || 0).toLocaleString('fr-FR') + ' FC',
+        `Vanille: ${versV.toLocaleString('fr-FR')} FC\nChocolat: ${versC.toLocaleString('fr-FR')} FC`
+      ];
+    });
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('landscape');
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(230, 98, 57);
+    doc.text("MANDELA", doc.internal.pageSize.getWidth() / 2, 18, { align: "center" });
+
+    doc.autoTable({
+      head: [["Dates", "Nombre de pièce restantes", "Nombre de pièce livrée", 
+              "Nombre de pièce Dégradées", "Nombre de pièce Vendues", 
+              "% (pourcentage)", "Dépenses", "Versement"]],
+      body: tableBody,
+      startY: 28,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [230, 98, 57], 
+        textColor: 255, 
+        fontStyle: 'bold', 
+        halign: 'center',
+        fontSize: 10 
+      },
+      bodyStyles: { 
+        fontSize: 9, 
+        cellPadding: 5, 
+        halign: 'left', 
+        valign: 'middle' 
+      },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+      columnStyles: {
+        0: { cellWidth: 28 },   // Dates
+        1: { cellWidth: 42 },   // Restantes
+        2: { cellWidth: 38 },   // Livrée
+        3: { cellWidth: 38 },   // Dégradées
+        4: { cellWidth: 38 },   // Vendues
+        5: { cellWidth: 32 },   // Pourcentage
+        6: { cellWidth: 35 },   // Dépenses
+        7: { cellWidth: 52 }    // Versement
+      },
+      styles: { overflow: 'linebreak' }
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    doc.save(`mandela_${today}.pdf`);
+    return;
+  }
+
+  // ====================== AUTRES TABLEAUX (Somme, Achats, Dépenses, Dettes) ======================
+  if (type === 'somme') {
+    data = displayedData?.length ? displayedData : ventesData;
+    fields = pointsVente;
+    title = "Somme totale par point de vente";
+  } 
+  else if (type === 'achats') {
+    data = displayedAchats?.length ? displayedAchats : achatsData;
+    fields = articlesAchats;
+    title = "Achats";
+  } 
+  else if (type === 'depenses') {
+    data = displayedDepenses?.length ? displayedDepenses : depensesData;
+    fields = articlesDepenses;
+    title = "Dépenses";
+  } 
+  else if (type === 'dettes') {
+    data = displayedDettes?.length ? displayedDettes : dettesData;
+    fields = dettesPersonnes;
+    title = "Dettes";
+  } 
+  else {
+    Swal.fire('Erreur', 'Type d\'export inconnu', 'error');
+    return;
+  }
+
+  if (!data?.length) {
+    Swal.fire({ title: 'Aucune donnée', text: 'Rien à exporter.', icon: 'info' });
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(230, 98, 57);
+  doc.text(title, doc.internal.pageSize.getWidth() / 2, 18, { align: "center" });
+
+  const MAX_COLS_PER_TABLE = 8;
+  let startY = 28;
+
+  const fieldGroups = [];
+  for (let i = 0; i < fields.length; i += MAX_COLS_PER_TABLE) {
+    fieldGroups.push(fields.slice(i, i + MAX_COLS_PER_TABLE));
+  }
+
+  fieldGroups.forEach((group) => {
+    const groupHeaders = ["Date"];
+    group.forEach(f => groupHeaders.push(f.display_name || f.name));
+    groupHeaders.push("Total");
+
+    const groupBody = data.map(item => {
+      const row = [new Date(item.date).toLocaleDateString('fr-FR')];
+      group.forEach(f => {
+        const key = getFieldName(f.name);
+        row.push(Number(item[key]) || 0);
+      });
+      const rowTotal = group.reduce((sum, f) => sum + (Number(item[getFieldName(f.name)]) || 0), 0);
+      row.push(rowTotal);
+      return row;
+    });
+
+    const totalsRow = ["Totals"];
+    let grandTotal = 0;
+    group.forEach(f => {
+      const key = getFieldName(f.name);
+      const colSum = data.reduce((sum, r) => sum + (Number(r[key]) || 0), 0);
+      totalsRow.push(colSum);
+      grandTotal += colSum;
+    });
+    totalsRow.push(grandTotal);
+    groupBody.push(totalsRow);
+
+    doc.autoTable({
+      head: [groupHeaders],
+      body: groupBody,
+      startY: startY,
+      theme: 'grid',
+      headStyles: { fillColor: [230, 98, 57], textColor: 255, fontStyle: 'bold', halign: 'center' },
+      bodyStyles: { fontSize: 10, halign: 'right', cellPadding: 4 },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+      didParseCell: data => {
+        if (data.row.index === groupBody.length - 1) {
+          data.cell.styles.fontStyle = 'bold';
+          if (!isNaN(parseFloat(data.cell.text[0]))) {
+            let txt = parseFloat(data.cell.text[0]).toLocaleString('fr-FR');
+            data.cell.text = [txt + ' FC'];
+          }
+        }
+      },
+      didDrawPage: function () {
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.setFont("helvetica", "italic");
+        doc.text("Generated by Inventory APP", pageWidth / 2, pageHeight - 8, { align: "center" });
+      },
+      margin: { top: startY, left: 10, right: 10 }
+    });
+
+    startY = doc.lastAutoTable.finalY + 12;
+  });
+
+  const today = new Date().toISOString().slice(0, 10);
+  doc.save(`${type}_${today}.pdf`);
+}
+
+
+
+
+// ────────────────────────────────────────────────
+//             NEW VARIABLES FOR ACHATS
+// ────────────────────────────────────────────────
+
+let articlesAchats = [];           // list of articles (columns)
+let achatsData = [];               // daily records
+let displayedAchats = [];
+let currentPageAchats = 1;
+let totalPagesAchats = 1;
+
+// ────────────────────────────────────────────────
+//             LOAD FUNCTIONS FOR ACHATS
+// ────────────────────────────────────────────────
+
+async function loadArticlesAchats() {
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/articles_achats/records?sort=name`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    articlesAchats = data.items || [];
+    console.log("Articles achats chargés :", articlesAchats);
+  } catch (err) {
+    console.error("Erreur chargement articles_achats:", err);
+    Swal.fire('Erreur', 'Impossible de charger les articles achats', 'error');
+    articlesAchats = [];
+  }
+}
+
+async function loadAchatsData() {
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/achats_journaliers/records?sort=-date`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    const data = await res.json();
+
+    achatsData = data.items || [];
+
+    renderAchatsTable(achatsData);
+
+    // ✅ hide/show Ajouter button
+    toggleAchatsAddButton();
+
+  } catch (err) {
+    Swal.fire('Erreur', 'Impossible de charger les achats', 'error');
+  }
+}
+
+// ────────────────────────────────────────────────
+//        RENDER HEADERS - ACHATS (copy of renderDynamicHeaders)
+// ────────────────────────────────────────────────
+
+function renderAchatsHeaders() {
+  const theadTr = document.querySelector('#achats-table thead tr');
+  if (!theadTr) return;
+
+  // Clear existing columns except first (Dates)
+  while (theadTr.children.length > 1) {
+    theadTr.removeChild(theadTr.lastChild);
+  }
+
+  if (articlesAchats.length === 0) {
+    const th = document.createElement('th');
+    th.textContent = '(Aucun article configuré)';
+    theadTr.appendChild(th);
+  } else {
+    articlesAchats.forEach(article => {
+      const th = document.createElement('th');
+      th.textContent = article.display_name || article.name || '(nom manquant)';
+      theadTr.appendChild(th);
+    });
+  }
+
+  // Total
+  const totalTh = document.createElement('th');
+  totalTh.textContent = 'Total';
+  theadTr.appendChild(totalTh);
+
+  // Action (admin only)
+  if (isAdmin) {
+    const actionTh = document.createElement('th');
+    actionTh.textContent = 'Action';
+    theadTr.appendChild(actionTh);
+  }
+}
+
+// ────────────────────────────────────────────────
+//        RENDER TABLE - ACHATS (almost copy of renderTable)
+// ────────────────────────────────────────────────
+
+function renderAchatsTable(data) {
+  displayedAchats = data || [];
+
+  const tbody = document.querySelector('#achats-table tbody');
+  tbody.innerHTML = '';
+
+  const colCount = articlesAchats.length > 0 ? articlesAchats.length : 1;
+  const numCols = 1 + colCount + 1 + (isAdmin ? 1 : 0);
+
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${numCols}" class="text-center text-muted">Aucune donnée pour la période sélectionnée pour la période sélectionnée</td></tr>`;
+    updateAchatsTotals({});
+    renderAchatsPagination(0);
+    return;
+  }
+
+  const totalRows = data.length;
+  totalPagesAchats = Math.ceil(totalRows / rowsPerPage);
+
+  const start = (currentPageAchats - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pageData = data.slice(start, end);
+
+  pageData.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.className = 'align-middle';
+
+    let rowHtml = `<td><p>${new Date(item.date).toLocaleDateString('fr-FR')}</p></td>`;
+
+    articlesAchats.forEach(article => {
+      const field = getFieldName(article.name);
+      const value = (item[field] !== undefined && item[field] !== null) ? item[field] : '-';
+      rowHtml += `<td>${value}</td>`;
+    });
+
+    if (articlesAchats.length === 0) {
+      rowHtml += `<td>-</td>`;
+    }
+
+    const rowTotal = articlesAchats.reduce((sum, article) => {
+      const field = getFieldName(article.name);
+      return sum + (Number(item[field]) || 0);
+    }, 0);
+
+    rowHtml += `<td>${rowTotal.toLocaleString('fr-FR')} FC</td>`;
+
+    if (isAdmin) {
+      rowHtml += `
+        <td>
+          <a href="#" class="edit-achats-btn" data-id="${item.id}"><i class="ti ti-edit"></i></a>
+          <a href="#" class="delete-achats-btn text-danger ms-2" data-id="${item.id}"><i class="ti ti-trash"></i></a>
+        </td>
+      `;
+    }
+
+    tr.innerHTML = rowHtml;
+    tbody.appendChild(tr);
+  });
+
+  const columnTotals = calculateAchatsColumnTotals(data);
+  updateAchatsTotals(columnTotals);
+
+  // Re-attach events
+  document.querySelectorAll('.edit-achats-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      openEditAchatsModal(e.currentTarget.dataset.id);
+    });
+  });
+
+  document.querySelectorAll('.delete-achats-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      confirmDeleteAchats(e.currentTarget.dataset.id);
+    });
+  });
+
+  renderAchatsPagination(totalRows);
+}
+
+function calculateAchatsColumnTotals(data) {
+  const totals = {};
+  articlesAchats.forEach(article => {
+    const field = getFieldName(article.name);
+    totals[field] = 0;
+  });
+
+  data.forEach(item => {
+    articlesAchats.forEach(article => {
+      const field = getFieldName(article.name);
+      totals[field] += Number(item[field]) || 0;
+    });
+  });
+
+  return totals;
+}
+
+function updateAchatsTotals(columnTotals) {
+  const tfoot = document.querySelector('#achats-table tfoot');
+  if (!tfoot) return;
+
+  const existing = document.getElementById('achats-totals-row');
+  if (existing) existing.remove();
+
+  const tr = document.createElement('tr');
+  tr.id = 'achats-totals-row';
+  tr.innerHTML = `<td class="border-bottom-0 fw-bold">Totals</td>`;
+
+  articlesAchats.forEach(article => {
+    const field = getFieldName(article.name);
+    const total = columnTotals[field] || 0;
+    tr.innerHTML += `<td class="fw-bold">${total.toLocaleString('fr-FR')} FC</td>`;
+  });
+
+  if (articlesAchats.length === 0) {
+    tr.innerHTML += `<td class="fw-bold">0 FC</td>`;
+  }
+
+  const grandTotal = Object.values(columnTotals).reduce((a, b) => a + b, 0);
+  tr.innerHTML += `<td class="fw-bold">${grandTotal.toLocaleString('fr-FR')} FC</td>`;
+
+  if (isAdmin) tr.innerHTML += `<td></td>`;
+
+  tfoot.prepend(tr);
+}
+
+function renderAchatsPagination(totalRows) {
+  const container = document.getElementById('achats-pagination');
+  const ul = container.querySelector('ul');
+  if (!ul) return;
+
+  ul.innerHTML = '';
+
+  if (totalRows <= rowsPerPage) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+
+  // Prev
+  const prev = document.createElement('li');
+  prev.className = `page-item ${currentPageAchats === 1 ? 'disabled' : ''}`;
+  prev.innerHTML = '<a class="page-link" href="#">Précédent</a>';
+  prev.addEventListener('click', e => {
+    e.preventDefault();
+    if (currentPageAchats > 1) {
+      currentPageAchats--;
+      renderAchatsTable(displayedAchats);
+    }
+  });
+  ul.appendChild(prev);
+
+  for (let i = 1; i <= totalPagesAchats; i++) {
+    const li = document.createElement('li');
+    li.className = `page-item ${i === currentPageAchats ? 'active' : ''}`;
+    li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+    li.addEventListener('click', e => {
+      e.preventDefault();
+      currentPageAchats = i;
+      renderAchatsTable(displayedAchats);
+    });
+    ul.appendChild(li);
+  }
+
+  const next = document.createElement('li');
+  next.className = `page-item ${currentPageAchats === totalPagesAchats ? 'disabled' : ''}`;
+  next.innerHTML = '<a class="page-link" href="#">Suivant</a>';
+  next.addEventListener('click', e => {
+    e.preventDefault();
+    if (currentPageAchats < totalPagesAchats) {
+      currentPageAchats++;
+      renderAchatsTable(displayedAchats);
+    }
+  });
+  ul.appendChild(next);
+}
+
+function filterAchatsByDateRange(start, end) {
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  const filtered = achatsData.filter(item => {
+    const itemDate = new Date(item.date);
+    return itemDate >= start && itemDate <= end;
+  });
+  currentPageAchats = 1;
+  renderAchatsTable(filtered);
+}
+function filterDepensesByDateRange(start, end) {
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  const filtered = depensesData.filter(item => {
+    const itemDate = new Date(item.date);
+    return itemDate >= start && itemDate <= end;
+  });
+  currentPageDepenses = 1;
+  renderDepensesTable(filtered);
+}
+
+// ────────────────────────────────────────────────
+//         DATE FILTER FOR ACHATS
+// ────────────────────────────────────────────────
+
+flatpickr(".achats-date-trigger", {
+  mode: "range",
+  dateFormat: "d/m/Y",
+  defaultDate: [new Date(), new Date()],
+  onChange: (selectedDates) => {
+    if (selectedDates.length === 2) {
+      filterAchatsByDateRange(selectedDates[0], selectedDates[1]);
+    } else if (selectedDates.length === 1) {
+      filterAchatsByDateRange(selectedDates[0], selectedDates[0]);
+    } else {
+      renderAchatsTable(achatsData);
+    }
+  }
+});
+flatpickr(".depenses-date-trigger", {
+  mode: "range",
+  dateFormat: "d/m/Y",
+  defaultDate: [new Date(), new Date()],
+  onChange: (selectedDates) => {
+    if (selectedDates.length === 2) {
+      filterDepensesByDateRange(selectedDates[0], selectedDates[1]);
+    } else if (selectedDates.length === 1) {
+      filterDepensesByDateRange(selectedDates[0], selectedDates[0]);
+    } else {
+      renderDepensesTable(depensesData);
+    }
+  }
+});
+// ────────────────────────────────────────────────
+//         ADD BUTTON FOR ACHATS
+// ────────────────────────────────────────────────
+
+document.querySelector('.achats-add-btn')?.addEventListener('click', openAddAchatsModal);
+
+function openAddAchatsModal() {
+  if (articlesAchats.length === 0) {
+    Swal.fire('Attention', 'Aucun article configuré.', 'warning');
+    return;
+  }
+
+  let html = `
+    <div class="text-start">
+      <label>Date (aujourd'hui)</label>
+      <input id="add-achats-date" class="form-control mb-3" value="${new Date().toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  articlesAchats.forEach(article => {
+    const field = getFieldName(article.name);
+    const label = article.display_name || article.name;
+    html += `
+      <label>${label}</label>
+      <input id="add-achats-${field}" type="number" class="form-control mb-2" placeholder="0" min="0">
+    `;
+  });
+
+  html += '</div>';
+
+  Swal.fire({
+    title: 'Ajouter un achat',
+    html,
+    showCancelButton: true,
+    confirmButtonText: 'Enregistrer',
+    preConfirm: () => {
+      const payload = { date: new Date().toISOString() };
+      articlesAchats.forEach(article => {
+        const field = getFieldName(article.name);
+        const val = document.getElementById(`add-achats-${field}`);
+        payload[field] = val ? Number(val.value) || 0 : 0;
+      });
+      return payload;
+    }
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/achats_journaliers/records`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+          },
+          body: JSON.stringify(result.value)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        Swal.fire('Succès', 'Achat ajouté !', 'success');
+        loadAchatsData();
+      } catch (err) {
+        Swal.fire('Erreur', err.message, 'error');
+      }
+    }
+  });
+}
+// ────────────────────────────────────────────────
+//         EDIT ACHATS
+// ────────────────────────────────────────────────
+
+async function openEditAchatsModal(id) {
+  let record;
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/achats_journaliers/records/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    record = await res.json();
+  } catch (err) {
+    Swal.fire('Erreur', 'Impossible de charger l\'achat', 'error');
+    return;
+  }
+
+  let html = `
+    <div class="text-start">
+      <label>Date</label>
+      <input id="edit-achats-date" class="form-control mb-3" value="${new Date(record.date).toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  articlesAchats.forEach(article => {
+    const field = getFieldName(article.name);
+    const label = article.display_name || article.name;
+    const value = record[field] || 0;
+    html += `
+      <label>${label}</label>
+      <input id="edit-achats-${field}" type="number" class="form-control mb-2" min="0" value="${value}">
+    `;
+  });
+
+  html += '</div>';
+
+  Swal.fire({
+    title: 'Modifier achat',
+    html,
+    showCancelButton: true,
+    confirmButtonText: 'Mettre à jour',
+    preConfirm: () => {
+      const payload = {};
+      articlesAchats.forEach(article => {
+        const field = getFieldName(article.name);
+        const el = document.getElementById(`edit-achats-${field}`);
+        payload[field] = Number(el?.value) || 0;
+      });
+      return payload;
+    }
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/achats_journaliers/records/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+          },
+          body: JSON.stringify(result.value)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        Swal.fire('Succès', 'Achat modifié !', 'success');
+        loadAchatsData();
+      } catch (err) {
+        Swal.fire('Erreur', err.message, 'error');
+      }
+    }
+  });
+}
+
+// ────────────────────────────────────────────────
+//         DELETE ACHATS
+// ────────────────────────────────────────────────
+
+function confirmDeleteAchats(id) {
+  Swal.fire({
+    title: 'Confirmer la suppression ?',
+    text: "Cette action est irréversible !",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Oui, supprimer',
+    cancelButtonText: 'Annuler'
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/achats_journaliers/records/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+        });
+        if (!res.ok) throw new Error(await res.text());
+        Swal.fire('Supprimé !', 'Achat supprimé.', 'success');
+        loadAchatsData();
+      } catch (err) {
+        Swal.fire('Erreur', 'Échec de la suppression<br>' + err.message, 'error');
+      }
+    }
+  });
+}
+function toggleAchatsAddButton() {
+  const btn = document.querySelector('.achats-add-btn');
+  if (!btn || !isAdmin) return;
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const hasTodayEntry = achatsData.some(item => {
+    const itemDate = new Date(item.date).toISOString().split('T')[0];
+    return itemDate === today;
+  });
+
+  btn.style.display = hasTodayEntry ? 'none' : 'inline-block';
+}
+// ────────────────────────────────────────────────
+//   DÉPENSES - VARIABLES
+// ────────────────────────────────────────────────
+let articlesDepenses = [];
+let depensesData = [];
+let displayedDepenses = [];
+let currentPageDepenses = 1;
+let totalPagesDepenses = 1;
+
+// ────────────────────────────────────────────────
+//   LOAD DÉPENSES
+// ────────────────────────────────────────────────
+async function loadArticlesDepenses() {
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/depenses_articles/records?sort=name`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    articlesDepenses = (await res.json()).items || [];
+  } catch (err) {
+    Swal.fire('Erreur', 'Articles dépenses chargement échoué', 'error');
+    articlesDepenses = [];
+  }
+}
+
+async function loadDepensesData() {
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/depenses_journalier/records?sort=-date`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    depensesData = (await res.json()).items || [];
+    renderDepensesTable(depensesData);
+    toggleDepensesAddButton();
+  } catch (err) {
+    Swal.fire('Erreur', 'Dépenses chargement échoué', 'error');
+  }
+}
+
+// ────────────────────────────────────────────────
+//   HEADERS DÉPENSES
+// ────────────────────────────────────────────────
+function renderDepensesHeaders() {
+  const tr = document.getElementById('depenses-thead-tr');
+  if (!tr) return;
+
+  tr.innerHTML = '<th>Dates</th>';
+
+  if (articlesDepenses.length === 0) {
+    tr.innerHTML += '<th>(Aucun article configuré)</th>';
+  } else {
+    articlesDepenses.forEach(a => {
+      tr.innerHTML += `<th>${a.display_name || a.name}</th>`;
+    });
+  }
+
+  tr.innerHTML += '<th>Total</th>';
+  if (isAdmin) tr.innerHTML += '<th>Action</th>';
+}
+
+// ────────────────────────────────────────────────
+//   TABLE RENDER DÉPENSES
+// ────────────────────────────────────────────────
+function renderDepensesTable(data) {
+  displayedDepenses = data || [];
+  const tbody = document.querySelector('#depenses-table tbody');
+  tbody.innerHTML = '';
+
+  if (!data.length) {
+    const colspan = articlesDepenses.length + 3;
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-muted">Aucune donnée pour la période sélectionnée</td></tr>`;
+    updateDepensesTotals({});
+    renderDepensesPagination(0);
+    return;
+  }
+
+  const totalRows = data.length;
+  totalPagesDepenses = Math.ceil(totalRows / rowsPerPage);
+  const start = (currentPageDepenses - 1) * rowsPerPage;
+  const pageData = data.slice(start, start + rowsPerPage);
+
+  pageData.forEach(item => {
+    let html = `<td>${new Date(item.date).toLocaleDateString('fr-FR')}</td>`;
+
+    articlesDepenses.forEach(a => {
+      const f = getFieldName(a.name);
+      html += `<td>${item[f] ?? '-'}</td>`;
+    });
+
+    const total = articlesDepenses.reduce((s, a) => s + (Number(item[getFieldName(a.name)]) || 0), 0);
+    html += `<td>${total.toLocaleString('fr-FR')} FC</td>`;
+
+    if (isAdmin) {
+      html += `
+        <td>
+          <a href="#" class="edit-depenses" data-id="${item.id}"><i class="ti ti-edit"></i></a>
+          <a href="#" class="delete-depenses text-danger ms-2" data-id="${item.id}"><i class="ti ti-trash"></i></a>
+        </td>`;
+    }
+
+    tbody.innerHTML += `<tr class="align-middle">${html}</tr>`;
+  });
+
+  updateDepensesTotals(calculateDepensesTotals(data));
+
+  document.querySelectorAll('.edit-depenses').forEach(el => {
+    el.onclick = e => { e.preventDefault(); openEditDepensesModal(el.dataset.id); };
+  });
+  document.querySelectorAll('.delete-depenses').forEach(el => {
+    el.onclick = e => { e.preventDefault(); confirmDeleteDepenses(el.dataset.id); };
+  });
+
+  renderDepensesPagination(totalRows);
+}
+
+function calculateDepensesTotals(data) {
+  const totals = {};
+  articlesDepenses.forEach(a => {
+    totals[getFieldName(a.name)] = data.reduce((s, r) => s + (Number(r[getFieldName(a.name)]) || 0), 0);
+  });
+  return totals;
+}
+
+function updateDepensesTotals(totals) {
+  const row = document.getElementById('depenses-totals-row');
+  row.innerHTML = '<td class="fw-bold">Totals</td>';
+
+  articlesDepenses.forEach(a => {
+    const v = totals[getFieldName(a.name)] || 0;
+    row.innerHTML += `<td class="fw-bold">${v.toLocaleString('fr-FR')} FC</td>`;
+  });
+
+  const grand = Object.values(totals).reduce((a,b)=>a+b,0);
+  row.innerHTML += `<td class="fw-bold">${grand.toLocaleString('fr-FR')} FC</td>`;
+  if (isAdmin) row.innerHTML += '<td></td>';
+}
+
+function renderDepensesPagination(totalRows) {
+  const container = document.getElementById('depenses-pagination');
+  const ul = container.querySelector('ul');
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  if (totalRows <= rowsPerPage) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+
+  // Prev
+  const prev = document.createElement('li');
+  prev.className = `page-item ${currentPageDepenses === 1 ? 'disabled' : ''}`;
+  prev.innerHTML = '<a class="page-link" href="#">Précédent</a>';
+  prev.onclick = e => {
+    e.preventDefault();
+    if (currentPageDepenses > 1) {
+      currentPageDepenses--;
+      renderDepensesTable(displayedDepenses);
+    }
+  };
+  ul.appendChild(prev);
+
+  for (let i = 1; i <= totalPagesDepenses; i++) {
+    const li = document.createElement('li');
+    li.className = `page-item ${i === currentPageDepenses ? 'active' : ''}`;
+    li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+    li.onclick = e => {
+      e.preventDefault();
+      currentPageDepenses = i;
+      renderDepensesTable(displayedDepenses);
+    };
+    ul.appendChild(li);
+  }
+
+  const next = document.createElement('li');
+  next.className = `page-item ${currentPageDepenses === totalPagesDepenses ? 'disabled' : ''}`;
+  next.innerHTML = '<a class="page-link" href="#">Suivant</a>';
+  next.onclick = e => {
+    e.preventDefault();
+    if (currentPageDepenses < totalPagesDepenses) {
+      currentPageDepenses++;
+      renderDepensesTable(displayedDepenses);
+    }
+  };
+  ul.appendChild(next);
+}
+
+// ────────────────────────────────────────────────
+//   DATE FILTER DÉPENSES
+// ────────────────────────────────────────────────
+function filterDepensesByDate(start, end) {
+  start.setHours(0,0,0,0);
+  end.setHours(23,59,59,999);
+  const filtered = depensesData.filter(item => {
+    const d = new Date(item.date);
+    return d >= start && d <= end;
+  });
+  currentPageDepenses = 1;
+  renderDepensesTable(filtered);
+}
+
+// ────────────────────────────────────────────────
+//   TOGGLE AJOUTER BUTTON DÉPENSES
+// ────────────────────────────────────────────────
+function toggleDepensesAddButton() {
+  const btn = document.querySelector('.depenses-add-btn');
+  if (!btn || !isAdmin) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  const hasToday = depensesData.some(item => {
+    return new Date(item.date).toISOString().split('T')[0] === today;
+  });
+
+  btn.style.display = hasToday ? 'none' : 'inline-block';
+}
+
+// ────────────────────────────────────────────────
+//   ADD MODAL DÉPENSES
+// ────────────────────────────────────────────────
+function openAddDepensesModal() {
+  if (!articlesDepenses.length) return Swal.fire('Attention', 'Aucun article configuré', 'warning');
+
+  let html = `
+    <div class="text-start">
+      <label>Date (aujourd'hui)</label>
+      <input class="form-control mb-3" value="${new Date().toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  articlesDepenses.forEach(a => {
+    const f = getFieldName(a.name);
+    html += `
+      <label>${a.display_name || a.name}</label>
+      <input id="add-dep-${f}" type="number" class="form-control mb-2" min="0" placeholder="0">
+    `;
+  });
+  html += '</div>';
+
+  Swal.fire({
+    title: 'Nouvelle dépense',
+    html,
+    showCancelButton: true,
+    confirmButtonText: 'Enregistrer',
+    preConfirm: () => {
+      const payload = { date: new Date().toISOString() };
+      articlesDepenses.forEach(a => {
+        const f = getFieldName(a.name);
+        payload[f] = Number(document.getElementById(`add-dep-${f}`)?.value) || 0;
+      });
+      return payload;
+    }
+  }).then(async res => {
+    if (res.isConfirmed) {
+      try {
+        const r = await fetch(`${PB_URL}/api/collections/depenses_journalier/records`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+          },
+          body: JSON.stringify(res.value)
+        });
+        if (!r.ok) throw await r.text();
+        Swal.fire('Succès', 'Dépense ajoutée !', 'success');
+        loadDepensesData();
+      } catch (e) {
+        Swal.fire('Erreur', e.message, 'error');
+      }
+    }
+  });
+}
+// ────────────────────────────────────────────────
+// EDIT DÉPENSES MODAL
+// ────────────────────────────────────────────────
+async function openEditDepensesModal(id) {
+  let record;
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/depenses_journalier/records/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    record = await res.json();
+  } catch (err) {
+    Swal.fire('Erreur', 'Impossible de charger la dépense', 'error');
+    return;
+  }
+
+  let html = `
+    <div class="text-start">
+      <label>Date</label>
+      <input id="edit-dep-date" class="form-control mb-3" value="${new Date(record.date).toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  articlesDepenses.forEach(article => {
+    const field = getFieldName(article.name);
+    const label = article.display_name || article.name;
+    const value = record[field] || 0;
+    html += `
+      <label>${label}</label>
+      <input id="edit-dep-${field}" type="number" class="form-control mb-2" min="0" value="${value}">
+    `;
+  });
+  html += '</div>';
+
+  Swal.fire({
+    title: 'Modifier dépense',
+    html,
+    showCancelButton: true,
+    confirmButtonText: 'Mettre à jour',
+    preConfirm: () => {
+      const payload = {};
+      articlesDepenses.forEach(article => {
+        const field = getFieldName(article.name);
+        const el = document.getElementById(`edit-dep-${field}`);
+        payload[field] = Number(el?.value) || 0;
+      });
+      return payload;
+    }
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/depenses_journalier/records/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+          },
+          body: JSON.stringify(result.value)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        Swal.fire('Succès', 'Dépense modifiée !', 'success');
+        await loadDepensesData();
+        toggleDepensesAddButton();  // re-check visibility
+      } catch (err) {
+        Swal.fire('Erreur', err.message, 'error');
+      }
+    }
+  });
+}
+
+// ────────────────────────────────────────────────
+// DELETE DÉPENSES
+// ────────────────────────────────────────────────
+function confirmDeleteDepenses(id) {
+  Swal.fire({
+    title: 'Confirmer la suppression ?',
+    text: "Cette action est irréversible !",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Oui, supprimer',
+    cancelButtonText: 'Annuler'
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/depenses_journalier/records/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+        });
+        if (!res.ok) throw new Error(await res.text());
+        Swal.fire('Supprimé !', 'Dépense supprimée.', 'success');
+        await loadDepensesData();
+        toggleDepensesAddButton();  // re-check visibility
+      } catch (err) {
+        Swal.fire('Erreur', 'Échec de la suppression<br>' + err.message, 'error');
+      }
+    }
+  });
+}
+// ────────────────────────────────────────────────
+//             DETTES - VARIABLES
+// ────────────────────────────────────────────────
+let dettesPersonnes = [];          // liste des personnes (colonnes)
+let dettesData = [];               // enregistrements quotidiens
+let displayedDettes = [];
+let currentPageDettes = 1;
+let totalPagesDettes = 1;
+
+// ────────────────────────────────────────────────
+//             LOAD DETTES
+// ────────────────────────────────────────────────
+async function loadDettesPersonnes() {
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/dettes_personnes/records?sort=name`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    dettesPersonnes = (await res.json()).items || [];
+  } catch (err) {
+    Swal.fire('Erreur', 'Impossible de charger les personnes dettes', 'error');
+    dettesPersonnes = [];
+  }
+}
+
+async function loadDettesData() {
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/dettes_journalier/records?sort=-date`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    dettesData = (await res.json()).items || [];
+    renderDettesTable(dettesData);
+    toggleDettesAddButton();
+  } catch (err) {
+    Swal.fire('Erreur', 'Impossible de charger les dettes', 'error');
+  }
+}
+
+// ────────────────────────────────────────────────
+//             HEADERS DETTES
+// ────────────────────────────────────────────────
+function renderDettesHeaders() {
+  const tr = document.getElementById('dettes-thead-tr');
+  if (!tr) return;
+
+  tr.innerHTML = '<th>Dates</th>';
+
+  if (dettesPersonnes.length === 0) {
+    tr.innerHTML += '<th>(Aucune personne configurée)</th>';
+  } else {
+    dettesPersonnes.forEach(p => {
+      tr.innerHTML += `<th>${p.display_name || p.name}</th>`;
+    });
+  }
+
+  tr.innerHTML += '<th>Total</th>';
+  if (isAdmin) tr.innerHTML += '<th>Action</th>';
+}
+
+// ────────────────────────────────────────────────
+//             TABLE RENDER DETTES
+// ────────────────────────────────────────────────
+function renderDettesTable(data) {
+  displayedDettes = data || [];
+  const tbody = document.querySelector('#dettes-table tbody');
+  tbody.innerHTML = '';
+
+  if (!data.length) {
+    const colspan = dettesPersonnes.length + 3;
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-muted">Aucune donnée pour la période sélectionnée</td></tr>`;
+    updateDettesTotals({});
+    renderDettesPagination(0);
+    return;
+  }
+
+  const totalRows = data.length;
+  totalPagesDettes = Math.ceil(totalRows / rowsPerPage);
+  const start = (currentPageDettes - 1) * rowsPerPage;
+  const pageData = data.slice(start, start + rowsPerPage);
+
+  pageData.forEach(item => {
+    let html = `<td>${new Date(item.date).toLocaleDateString('fr-FR')}</td>`;
+
+    dettesPersonnes.forEach(p => {
+      const f = getFieldName(p.name);
+      html += `<td>${item[f] ?? '-'}</td>`;
+    });
+
+    const total = dettesPersonnes.reduce((s, p) => {
+      return s + (Number(item[getFieldName(p.name)]) || 0);
+    }, 0);
+
+    html += `<td>${total.toLocaleString('fr-FR')} FC</td>`;
+
+    if (isAdmin) {
+      html += `
+        <td>
+          <a href="#" class="edit-dettes" data-id="${item.id}"><i class="ti ti-edit"></i></a>
+          <a href="#" class="delete-dettes text-danger ms-2" data-id="${item.id}"><i class="ti ti-trash"></i></a>
+        </td>`;
+    }
+
+    tbody.innerHTML += `<tr class="align-middle">${html}</tr>`;
+  });
+
+  updateDettesTotals(calculateDettesTotals(data));
+
+  document.querySelectorAll('.edit-dettes').forEach(el => {
+    el.onclick = e => { e.preventDefault(); openEditDettesModal(el.dataset.id); };
+  });
+
+  document.querySelectorAll('.delete-dettes').forEach(el => {
+    el.onclick = e => { e.preventDefault(); confirmDeleteDettes(el.dataset.id); };
+  });
+
+  renderDettesPagination(totalRows);
+}
+
+function calculateDettesTotals(data) {
+  const totals = {};
+  dettesPersonnes.forEach(p => {
+    totals[getFieldName(p.name)] = data.reduce((s, r) => s + (Number(r[getFieldName(p.name)]) || 0), 0);
+  });
+  return totals;
+}
+
+function updateDettesTotals(totals) {
+  const row = document.getElementById('dettes-totals-row');
+  row.innerHTML = '<td class="fw-bold">Totals</td>';
+
+  dettesPersonnes.forEach(p => {
+    const v = totals[getFieldName(p.name)] || 0;
+    row.innerHTML += `<td class="fw-bold">${v.toLocaleString('fr-FR')} FC</td>`;
+  });
+
+  const grand = Object.values(totals).reduce((a,b)=>a+b,0);
+  row.innerHTML += `<td class="fw-bold">${grand.toLocaleString('fr-FR')} FC</td>`;
+  if (isAdmin) row.innerHTML += '<td></td>';
+}
+
+function renderDettesPagination(totalRows) {
+  const container = document.getElementById('dettes-pagination');
+  const ul = container.querySelector('ul');
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  if (totalRows <= rowsPerPage) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+
+  const prev = document.createElement('li');
+  prev.className = `page-item ${currentPageDettes === 1 ? 'disabled' : ''}`;
+  prev.innerHTML = '<a class="page-link" href="#">Précédent</a>';
+  prev.onclick = e => {
+    e.preventDefault();
+    if (currentPageDettes > 1) {
+      currentPageDettes--;
+      renderDettesTable(displayedDettes);
+    }
+  };
+  ul.appendChild(prev);
+
+  for (let i = 1; i <= totalPagesDettes; i++) {
+    const li = document.createElement('li');
+    li.className = `page-item ${i === currentPageDettes ? 'active' : ''}`;
+    li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+    li.onclick = e => {
+      e.preventDefault();
+      currentPageDettes = i;
+      renderDettesTable(displayedDettes);
+    };
+    ul.appendChild(li);
+  }
+
+  const next = document.createElement('li');
+  next.className = `page-item ${currentPageDettes === totalPagesDettes ? 'disabled' : ''}`;
+  next.innerHTML = '<a class="page-link" href="#">Suivant</a>';
+  next.onclick = e => {
+    e.preventDefault();
+    if (currentPageDettes < totalPagesDettes) {
+      currentPageDettes++;
+      renderDettesTable(displayedDettes);
+    }
+  };
+  ul.appendChild(next);
+}
+
+// ────────────────────────────────────────────────
+//   DATE FILTER DETTES
+// ────────────────────────────────────────────────
+function filterDettesByDateRange(start, end) {
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  const filtered = dettesData.filter(item => {
+    const d = new Date(item.date);
+    return d >= start && d <= end;
+  });
+  currentPageDettes = 1;
+  renderDettesTable(filtered);
+}
+
+// ────────────────────────────────────────────────
+//   TOGGLE AJOUTER BUTTON DETTES
+// ────────────────────────────────────────────────
+function toggleDettesAddButton() {
+  const btn = document.querySelector('.dettes-add-btn');
+  if (!btn || !isAdmin) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  const hasToday = dettesData.some(item => {
+    return new Date(item.date).toISOString().split('T')[0] === today;
+  });
+
+  btn.style.display = hasToday ? 'none' : 'inline-block';
+}
+
+// ────────────────────────────────────────────────
+//   ADD MODAL DETTES
+// ────────────────────────────────────────────────
+function openAddDettesModal() {
+  if (!dettesPersonnes.length) return Swal.fire('Attention', 'Aucune personne configurée', 'warning');
+
+  let html = `
+    <div class="text-start">
+      <label>Date (aujourd'hui)</label>
+      <input class="form-control mb-3" value="${new Date().toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  dettesPersonnes.forEach(p => {
+    const f = getFieldName(p.name);
+    html += `
+      <label>${p.display_name || p.name}</label>
+      <input id="add-dettes-${f}" type="number" class="form-control mb-2" min="0" placeholder="0">
+    `;
+  });
+  html += '</div>';
+
+  Swal.fire({
+    title: 'Nouvelle dette',
+    html,
+    showCancelButton: true,
+    confirmButtonText: 'Enregistrer',
+    preConfirm: () => {
+      const payload = { date: new Date().toISOString() };
+      dettesPersonnes.forEach(p => {
+        const f = getFieldName(p.name);
+        payload[f] = Number(document.getElementById(`add-dettes-${f}`)?.value) || 0;
+      });
+      return payload;
+    }
+  }).then(async res => {
+    if (res.isConfirmed) {
+      try {
+        const r = await fetch(`${PB_URL}/api/collections/dettes_journalier/records`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+          },
+          body: JSON.stringify(res.value)
+        });
+        if (!r.ok) throw await r.text();
+        Swal.fire('Succès', 'Dette ajoutée !', 'success');
+        await loadDettesData();
+        toggleDettesAddButton();
+      } catch (e) {
+        Swal.fire('Erreur', e.message, 'error');
+      }
+    }
+  });
+}
+
+// ────────────────────────────────────────────────
+//   EDIT DETTES MODAL
+// ────────────────────────────────────────────────
+async function openEditDettesModal(id) {
+  let record;
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/dettes_journalier/records/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    record = await res.json();
+  } catch (err) {
+    Swal.fire('Erreur', 'Impossible de charger la dette', 'error');
+    return;
+  }
+
+  let html = `
+    <div class="text-start">
+      <label>Date</label>
+      <input class="form-control mb-3" value="${new Date(record.date).toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  dettesPersonnes.forEach(p => {
+    const f = getFieldName(p.name);
+    const value = record[f] || 0;
+    html += `
+      <label>${p.display_name || p.name}</label>
+      <input id="edit-dettes-${f}" type="number" class="form-control mb-2" min="0" value="${value}">
+    `;
+  });
+  html += '</div>';
+
+  Swal.fire({
+    title: 'Modifier dette',
+    html,
+    showCancelButton: true,
+    confirmButtonText: 'Mettre à jour',
+    preConfirm: () => {
+      const payload = {};
+      dettesPersonnes.forEach(p => {
+        const f = getFieldName(p.name);
+        payload[f] = Number(document.getElementById(`edit-dettes-${f}`)?.value) || 0;
+      });
+      return payload;
+    }
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/dettes_journalier/records/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+          },
+          body: JSON.stringify(result.value)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        Swal.fire('Succès', 'Dette modifiée !', 'success');
+        await loadDettesData();
+        toggleDettesAddButton();
+      } catch (err) {
+        Swal.fire('Erreur', err.message, 'error');
+      }
+    }
+  });
+}
+
+// ────────────────────────────────────────────────
+//   DELETE DETTES
+// ────────────────────────────────────────────────
+function confirmDeleteDettes(id) {
+  Swal.fire({
+    title: 'Confirmer la suppression ?',
+    text: "Cette action est irréversible !",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Oui, supprimer',
+    cancelButtonText: 'Annuler'
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/dettes_journalier/records/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+        });
+        if (!res.ok) throw new Error(await res.text());
+        Swal.fire('Supprimé !', 'Dette supprimée.', 'success');
+        await loadDettesData();
+        toggleDettesAddButton();
+      } catch (err) {
+        Swal.fire('Erreur', 'Échec de la suppression<br>' + err.message, 'error');
+      }
+    }
+  });
+}
+
+/// ────────────────────────────────────────────────
+// MANDELA - VERSION CORRIGÉE (Dépenses = 1 champ | Versement calculé)
+// ────────────────────────────────────────────────
+let mandelaData = [];
+let displayedMandela = [];
+let currentPageMandela = 1;
+let totalPagesMandela = 1;
+
+const mandelaColumns = [
+  { key: 'nombre_de_piece_restantes', label: 'Nombre de pièce restantes', split: true },
+  { key: 'nombre_de_pieces_livrees',   label: 'Nombre de pièce livrée',   split: true },
+  { key: 'nombre_de_piece_degradees', label: 'Nombre de pièce Dégradées', split: true },
+  { key: 'nombre_de_pieces_vendues',  label: 'Nombre de pièce Vendues',  split: true },
+  { key: 'pourcentage',               label: '% (pourcentage)',          split: true },
+  { key: 'depenses',                  label: 'Dépenses',                 split: false },
+  { key: 'versement',                 label: 'Versement',                split: false },
+  { key: 'solde', label: 'Solde', split: false }   // ← NOUVELLE COLONNE
+];
+
+// ====================== LOAD DATA ======================
+async function loadMandelaData() {
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/mandela_journalier/records?sort=-date`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    mandelaData = (await res.json()).items || [];
+    renderMandelaTable(mandelaData);
+    toggleMandelaAddButton();
+  } catch (err) {
+    console.error(err);
+    Swal.fire('Erreur', 'Impossible de charger les données Mandela', 'error');
+  }
+}
+
+function renderMandelaHeaders() {
+  const tr = document.getElementById('mandela-thead-tr');
+  if (!tr) return;
+
+  tr.innerHTML = '<th>Dates</th>';
+
+  mandelaColumns.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col.label;
+    tr.appendChild(th);
+  });
+
+  if (isAdmin) {
+    const actionTh = document.createElement('th');
+    actionTh.textContent = 'Action';
+    tr.appendChild(actionTh);
+  }
+}
+// ====================== RENDER TABLE MANDELA (avec Solde) ======================
+function renderMandelaTable(data) {
+  displayedMandela = data || [];
+  const tbody = document.querySelector('#mandela-table tbody');
+  tbody.innerHTML = '';
+
+  if (!data.length) {
+    const colspan = mandelaColumns.length + 2;
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-muted">Aucune donnée pour la période sélectionnée</td></tr>`;
+    updateMandelaTotals([]);
+    renderMandelaPagination(0);
+    return;
+  }
+
+  // Trier du plus ancien au plus récent pour le cumul des restantes
+  const sortedForCalc = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  let previousRestantV = 0;
+  let previousRestantC = 0;
+
+  const calculatedData = sortedForCalc.map(item => {
+    const livV = Number(item.nombre_de_pieces_livrees_vanille || 0);
+    const venV = Number(item.nombre_de_pieces_vendues_vanille || 0);
+    const degV = Number(item.nombre_de_piece_degradees_vanille || 0);
+    const restantV = previousRestantV + livV - venV - degV;
+
+    const livC = Number(item.nombre_de_pieces_livrees_chocolat || 0);
+    const venC = Number(item.nombre_de_pieces_vendues_chocolat || 0);
+    const degC = Number(item.nombre_de_piece_degradees_chocolat || 0);
+    const restantC = previousRestantC + livC - venC - degC;
+
+    previousRestantV = restantV;
+    previousRestantC = restantC;
+
+    return { ...item, restantV_calc: restantV, restantC_calc: restantC };
+  });
+
+  // Trier du plus récent au plus ancien pour l'affichage
+  const sortedForDisplay = calculatedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  sortedForDisplay.forEach(item => {
+    const dateStr = new Date(item.date).toLocaleDateString('fr-FR');
+
+    const venV = Number(item.nombre_de_pieces_vendues_vanille || 0);
+    const venC = Number(item.nombre_de_pieces_vendues_chocolat || 0);
+    const dep = Number(item.depenses || 0);
+
+    const versV = venV * 1000;
+    const versC = venC * 2500;
+    const commission = (versV * 0.2) + (versC * 0.14);
+    const solde = (versV + versC) - commission - dep;
+
+    const tr = document.createElement('tr');
+    tr.className = 'align-middle';
+
+    let rowHtml = `<td>${dateStr}</td>`;
+
+    mandelaColumns.forEach(col => {
+      let value = '';
+
+      if (col.key === 'nombre_de_piece_restantes') {
+        value = `<strong>Vanille:</strong> ${item.restantV_calc.toLocaleString('fr-FR')}<br>
+                 <strong>Chocolat:</strong> ${item.restantC_calc.toLocaleString('fr-FR')}`;
+      }
+      else if (col.key === 'pourcentage') {
+        const pV = (venV * 0.2).toFixed(2);
+        const pC = (venC * 0.14).toFixed(2);
+        value = `<strong>Vanille:</strong> ${pV}%<br><strong>Chocolat:</strong> ${pC}%`;
+      }
+      else if (col.key === 'depenses') {
+        value = dep.toLocaleString('fr-FR') + ' FC';
+      }
+      else if (col.key === 'versement') {
+        value = `<strong>Vanille:</strong> ${versV.toLocaleString('fr-FR')} FC<br>
+                 <strong>Chocolat:</strong> ${versC.toLocaleString('fr-FR')} FC`;
+      }
+      else if (col.key === 'solde') {
+        value = solde.toLocaleString('fr-FR') + ' FC';
+      }
+      else {
+        const valV = Number(item[col.key + '_vanille'] || 0);
+        const valC = Number(item[col.key + '_chocolat'] || 0);
+        value = `<strong>Vanille:</strong> ${valV.toLocaleString('fr-FR')}<br>
+                 <strong>Chocolat:</strong> ${valC.toLocaleString('fr-FR')}`;
+      }
+
+      rowHtml += `<td>${value}</td>`;
+    });
+
+    if (isAdmin) {
+      rowHtml += `
+        <td>
+          <a href="#" class="edit-mandela" data-id="${item.id}"><i class="ti ti-edit"></i></a>
+          <a href="#" class="delete-mandela text-danger ms-2" data-id="${item.id}"><i class="ti ti-trash"></i></a>
+        </td>`;
+    }
+
+    tr.innerHTML = rowHtml;
+    tbody.appendChild(tr);
+  });
+
+  updateMandelaTotals(sortedForDisplay);
+  renderMandelaPagination(data.length);
+
+  // Re-attach events
+  document.querySelectorAll('.edit-mandela').forEach(el => {
+    el.onclick = e => { e.preventDefault(); openEditMandelaModal(el.dataset.id); };
+  });
+  document.querySelectorAll('.delete-mandela').forEach(el => {
+    el.onclick = e => { e.preventDefault(); confirmDeleteMandela(el.dataset.id); };
+  });
+}
+
+
+function updateMandelaTotals(data) {
+  const row = document.getElementById('mandela-totals-row');
+  if (!row) return;
+  row.innerHTML = '<td class="fw-bold">Totals</td>';
+
+  mandelaColumns.forEach(col => {
+    if (col.key === 'pourcentage' || col.key === 'nombre_de_piece_restantes') {
+      row.innerHTML += `<td class="fw-bold"></td>`;
+      return;
+    }
+    if (col.key === 'depenses') {
+      const totalDep = data.reduce((sum, r) => sum + (Number(r.depenses) || 0), 0);
+      row.innerHTML += `<td class="fw-bold">${totalDep.toLocaleString('fr-FR')} FC</td>`;
+    }
+    else if (col.key === 'versement') {
+      let totalVers = 0;
+      data.forEach(r => {
+        totalVers += (Number(r.nombre_de_pieces_vendues_vanille || 0) * 1000);
+        totalVers += (Number(r.nombre_de_pieces_vendues_chocolat || 0) * 2500);
+      });
+      row.innerHTML += `<td class="fw-bold">${totalVers.toLocaleString('fr-FR')} FC</td>`;
+    }
+    else if (col.key === 'solde') {
+      let totalSolde = 0;
+      data.forEach(r => {
+        const venV = Number(r.nombre_de_pieces_vendues_vanille || 0);
+        const venC = Number(r.nombre_de_pieces_vendues_chocolat || 0);
+        const dep = Number(r.depenses || 0);
+        const versV = venV * 1000;
+        const versC = venC * 2500;
+        const commission = (versV * 0.2) + (versC * 0.14);
+        totalSolde += (versV + versC) - commission - dep;
+      });
+      row.innerHTML += `<td class="fw-bold">${totalSolde.toLocaleString('fr-FR')} FC</td>`;
+    }
+    else {
+      const totalV = data.reduce((sum, r) => sum + Number(r[col.key + '_vanille'] || 0), 0);
+      const totalC = data.reduce((sum, r) => sum + Number(r[col.key + '_chocolat'] || 0), 0);
+      row.innerHTML += `<td class="fw-bold">Vanille: ${totalV.toLocaleString('fr-FR')}<br>Chocolat: ${totalC.toLocaleString('fr-FR')}</td>`;
+    }
+  });
+
+  if (isAdmin) row.innerHTML += '<td></td>';
+}
+
+
+// ====================== PAGINATION ======================
+function renderMandelaPagination(totalRows) {
+  const container = document.getElementById('mandela-pagination');
+  const ul = container.querySelector('ul');
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  if (totalRows <= rowsPerPage) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+
+  // Prev / Next / Pages (identique à tes autres tableaux)
+  const prev = document.createElement('li');
+  prev.className = `page-item ${currentPageMandela === 1 ? 'disabled' : ''}`;
+  prev.innerHTML = '<a class="page-link" href="#">Précédent</a>';
+  prev.onclick = e => { e.preventDefault(); if (currentPageMandela > 1) { currentPageMandela--; renderMandelaTable(displayedMandela); }};
+  ul.appendChild(prev);
+
+  for (let i = 1; i <= totalPagesMandela; i++) {
+    const li = document.createElement('li');
+    li.className = `page-item ${i === currentPageMandela ? 'active' : ''}`;
+    li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+    li.onclick = e => { e.preventDefault(); currentPageMandela = i; renderMandelaTable(displayedMandela); };
+    ul.appendChild(li);
+  }
+
+  const next = document.createElement('li');
+  next.className = `page-item ${currentPageMandela === totalPagesMandela ? 'disabled' : ''}`;
+  next.innerHTML = '<a class="page-link" href="#">Suivant</a>';
+  next.onclick = e => { e.preventDefault(); if (currentPageMandela < totalPagesMandela) { currentPageMandela++; renderMandelaTable(displayedMandela); }};
+  ul.appendChild(next);
+}
+
+// ====================== ADD / EDIT / DELETE (inchangés sauf petit fix) ======================
+// Tu peux garder tes fonctions openAddMandelaModal, openEditMandelaModal, confirmDeleteMandela telles quelles.
+// Elles sont déjà bien faites pour gérer "depenses" en un seul champ.
+
+// ────────────────────────────────────────────────
+//   DATE FILTER MANDELA
+// ────────────────────────────────────────────────
+function filterMandelaByDateRange(start, end) {
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  const filtered = mandelaData.filter(item => {
+    const d = new Date(item.date);
+    return d >= start && d <= end;
+  });
+  currentPageMandela = 1;
+  renderMandelaTable(filtered);
+}
+
+// ────────────────────────────────────────────────
+//   TOGGLE AJOUTER BUTTON MANDELA
+// ────────────────────────────────────────────────
+function toggleMandelaAddButton() {
+  const btn = document.querySelector('.mandela-add-btn');
+  if (!btn || !isAdmin) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  const hasToday = mandelaData.some(item => {
+    return new Date(item.date).toISOString().split('T')[0] === today;
+  });
+
+  btn.style.display = hasToday ? 'none' : 'inline-block';
+}
+
+// ====================== ADD MODAL MANDELA ======================
+function openAddMandelaModal() {
+  let html = `
+    <div class="text-start">
+      <label>Date (aujourd'hui)</label>
+      <input class="form-control mb-3" value="${new Date().toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  mandelaColumns.forEach(col => {
+    // On saute les champs calculés ET "nombre_de_piece_restantes"
+    if (col.key === 'pourcentage' || 
+        col.key === 'versement' || 
+        col.key === 'nombre_de_piece_restantes' || 
+        col.key === 'solde') {
+      return;
+    }
+
+    const label = col.label;
+
+    if (col.split) {
+      // Champs Vanille + Chocolat
+      html += `
+        <label>${label} - Vanille</label>
+        <input id="add-mandela-${col.key}_vanille" type="number" class="form-control mb-2" min="0" placeholder="0">
+        <label>${label} - Chocolat</label>
+        <input id="add-mandela-${col.key}_chocolat" type="number" class="form-control mb-2" min="0" placeholder="0">
+      `;
+    } else {
+      // Dépenses (un seul champ)
+      html += `
+        <label>${label}</label>
+        <input id="add-mandela-${col.key}" type="number" class="form-control mb-2" min="0" placeholder="0">
+      `;
+    }
+  });
+
+  html += '</div>';
+
+  Swal.fire({
+    title: 'Nouvelle entrée Mandela',
+    html: html,
+    showCancelButton: true,
+    confirmButtonText: 'Enregistrer',
+    cancelButtonText: 'Annuler',
+    preConfirm: () => {
+      const payload = { date: new Date().toISOString() };
+
+      mandelaColumns.forEach(col => {
+        if (col.key === 'pourcentage' || 
+            col.key === 'versement' || 
+            col.key === 'nombre_de_piece_restantes') return;
+
+        if (col.split) {
+          payload[col.key + '_vanille'] = Number(document.getElementById(`add-mandela-${col.key}_vanille`)?.value) || 0;
+          payload[col.key + '_chocolat'] = Number(document.getElementById(`add-mandela-${col.key}_chocolat`)?.value) || 0;
+        } else {
+          payload[col.key] = Number(document.getElementById(`add-mandela-${col.key}`)?.value) || 0;
+        }
+      });
+      return payload;
+    }
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const r = await fetch(`${PB_URL}/api/collections/mandela_journalier/records`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+          },
+          body: JSON.stringify(result.value)
+        });
+
+        if (!r.ok) throw await r.text();
+
+        Swal.fire('Succès', 'Entrée ajoutée !', 'success');
+        await loadMandelaData();
+        toggleMandelaAddButton();
+      } catch (e) {
+        Swal.fire('Erreur', e.message || e, 'error');
+      }
+    }
+  });
+}
+
+// ====================== EDIT MODAL MANDELA ======================
+async function openEditMandelaModal(id) {
+  let record;
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/mandela_journalier/records/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    record = await res.json();
+  } catch (err) {
+    Swal.fire('Erreur', 'Impossible de charger l\'entrée', 'error');
+    return;
+  }
+
+  let html = `
+    <div class="text-start">
+      <label>Date</label>
+      <input class="form-control mb-3" value="${new Date(record.date).toLocaleDateString('fr-FR')}" disabled>
+  `;
+
+  mandelaColumns.forEach(col => {
+    // On saute les champs calculés ET "nombre_de_piece_restantes"
+    if (col.key === 'pourcentage' || 
+        col.key === 'versement' || 
+        col.key === 'nombre_de_piece_restantes' || 
+        col.key === 'solde') {
+      return;
+    }
+
+    const label = col.label;
+
+    if (col.split) {
+      // Vanille + Chocolat
+      const valV = record[col.key + '_vanille'] || 0;
+      const valC = record[col.key + '_chocolat'] || 0;
+      html += `
+        <label>${label} - Vanille</label>
+        <input id="edit-mandela-${col.key}_vanille" type="number" class="form-control mb-2" min="0" value="${valV}">
+        <label>${label} - Chocolat</label>
+        <input id="edit-mandela-${col.key}_chocolat" type="number" class="form-control mb-2" min="0" value="${valC}">
+      `;
+    } else {
+      // Dépenses (un seul champ)
+      const val = record[col.key] || 0;
+      html += `
+        <label>${label}</label>
+        <input id="edit-mandela-${col.key}" type="number" class="form-control mb-2" min="0" value="${val}">
+      `;
+    }
+  });
+
+  html += '</div>';
+
+  Swal.fire({
+    title: 'Modifier entrée Mandela',
+    html: html,
+    showCancelButton: true,
+    confirmButtonText: 'Mettre à jour',
+    cancelButtonText: 'Annuler',
+    preConfirm: () => {
+      const payload = { date: record.date }; // on garde la date d'origine
+
+      mandelaColumns.forEach(col => {
+        if (col.key === 'pourcentage' || 
+            col.key === 'versement' || 
+            col.key === 'nombre_de_piece_restantes') return;
+
+        if (col.split) {
+          payload[col.key + '_vanille'] = Number(document.getElementById(`edit-mandela-${col.key}_vanille`)?.value) || 0;
+          payload[col.key + '_chocolat'] = Number(document.getElementById(`edit-mandela-${col.key}_chocolat`)?.value) || 0;
+        } else {
+          payload[col.key] = Number(document.getElementById(`edit-mandela-${col.key}`)?.value) || 0;
+        }
+      });
+      return payload;
+    }
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/mandela_journalier/records/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('pb_token')}`
+          },
+          body: JSON.stringify(result.value)
+        });
+
+        if (!res.ok) throw await res.text();
+
+        Swal.fire('Succès', 'Entrée modifiée !', 'success');
+        await loadMandelaData();
+        toggleMandelaAddButton();
+      } catch (err) {
+        Swal.fire('Erreur', err.message || e, 'error');
+      }
+    }
+  });
+}
+
+
+// ────────────────────────────────────────────────
+//   DELETE MANDELA
+// ────────────────────────────────────────────────
+function confirmDeleteMandela(id) {
+  Swal.fire({
+    title: 'Confirmer la suppression ?',
+    text: "Cette action est irréversible !",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Oui, supprimer',
+    cancelButtonText: 'Annuler'
+  }).then(async result => {
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${PB_URL}/api/collections/mandela_journalier/records/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${localStorage.getItem('pb_token')}` }
+        });
+        if (!res.ok) throw new Error(await res.text());
+        Swal.fire('Supprimé !', 'Entrée supprimée.', 'success');
+        await loadMandelaData();
+        toggleMandelaAddButton();
+      } catch (err) {
+        Swal.fire('Erreur', 'Échec de la suppression<br>' + err.message, 'error');
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>

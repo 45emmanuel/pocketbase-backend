@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>404 Error - InApp Inventory Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="apple-touch-icon" sizes="180x180" href="./assets/images/favicon_io/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon_io/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/images/favicon_io/favicon-16x16.png">
+  <link rel="manifest" href="./assets/images/favicon_io/site.webmanifest">
+
+    <style>
+  /* Preloader - Clean white background version */
+#preloader {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;           /* Pure white background */
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.7s ease, visibility 0.7s ease;
+}
+
+#preloader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Spinner - subtle, professional look */
+.spinner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+/* Main ring */
+.spinner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 6px solid #e66239;          /* your accent orange */
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
+}
+
+/* Inner subtle ring for depth */
+.spinner::after {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border: 6px solid rgba(230, 98, 57, 0.3);  /* lighter orange */
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1.5s linear infinite reverse;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Optional: small logo or text in center */
+.spinner-logo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container d-flex align-items-center justify-content-center min-vh-100">
+    <div class="" style="max-width: 500px; width: 100%;">
+        <div class="text-center">
+            <div class="mb-4">
+                <a href="index.html" class="d-inline-block mb-4">
+                    <img src="./assets/images/logo-icon.svg" alt="" width="36">
+                    <span class="ms-2"><img src="./assets/images/logo.svg" alt=""></span>
+                </a>
+            </div>
+
+            <h1 class="display-1 fw-bold text-primary mb-2">404</h1>
+            <h2 class="card-title h4 mb-3">Page Not Found</h2>
+            <p class="text-muted mb-4">Sorry, the page you're looking for doesn't exist or has been moved.</p>
+
+            <a href="index.html" class="btn btn-primary">Go to Dashboard</a>
+        </div>
+    </div>
+</div>
+
+  <!-- Bootstrap JS -->
+  <script src="./assets/js/main.js" type="module"></script>
+
+<script>
+window.addEventListener('load', function() {
+  const preloader = document.getElementById('preloader');
+  if (preloader) {
+    // Slightly longer fade for smoother feel on white bg
+    setTimeout(() => {
+      preloader.classList.add('hidden');
+    }, 600);
+  }
+});
+</script>
+</body>
+<div id="preloader">
+  <div class="spinner">
+    <!-- Optional: show your logo or "Loading..." in center -->
+    <div class="spinner-logo">
+      <img src="./assets/images/logo-icon.svg" alt="Loading" width="40">
+    </div>
+  </div>
+</div>
+</html>

@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Tableau de bord - InApp Inventory Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/images/favicon_io/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon_io/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/images/favicon_io/favicon-16x16.png">
+  <link rel="manifest" href="./assets/images/favicon_io/site.webmanifest">
+
+  <style>
+  /* Preloader - Clean white background version */
+  #preloader {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #ffffff;           /* Pure white background */
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.7s ease, visibility 0.7s ease;
+  }
+
+  #preloader.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* Spinner - subtle, professional look */
+  .spinner {
+    position: relative;
+    width: 80px;
+    height: 80px;
+  }
+
+  /* Main ring */
+  .spinner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 6px solid #e66239;          /* your accent orange */
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
+  }
+
+  /* Inner subtle ring for depth */
+  .spinner::after {
+    content: '';
+    position: absolute;
+    inset: 16px;
+    border: 6px solid rgba(230, 98, 57, 0.3);  /* lighter orange */
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1.5s linear infinite reverse;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Optional: small logo or text in center */
+  .spinner-logo {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    animation: pulse-text 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-text {
+    0%, 100% { opacity: 0.7; }
+    50%      { opacity: 1; }
+  }
+  </style>
+</head>
+
+<body>
+  <div id="overlay" class="overlay"></div>
+  <!-- TOPBAR -->
+  <nav id="topbar" class="navbar bg-white border-bottom fixed-top topbar px-3">
+    <button id="toggleBtn" class="d-none d-lg-inline-flex btn btn-light btn-icon btn-sm ">
+      <i class="ti ti-layout-sidebar-left-expand"></i>
+    </button>
+
+    <!-- MOBILE -->
+    <button id="mobileBtn" class="btn btn-light btn-icon btn-sm d-lg-none me-2">
+      <i class="ti ti-layout-sidebar-left-expand"></i>
+    </button>
+   <div>
+  <!-- Navbar nav -->
+  <ul class="list-unstyled d-flex align-items-center mb-0 gap-1">
+    <!-- Dropdown -->
+    <li class="ms-3 dropdown">
+      <a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <!-- Replaced avatar image with a neutral person icon -->
+        <i class="ti ti-user-circle avatar avatar-sm text-muted" style="font-size: 2rem; line-height: 1;"></i>
+      </a>
+      <div class="dropdown-menu dropdown-menu-end p-0" style="min-width: 200px;">
+        <div>
+          <div class="d-flex gap-3 align-items-center border-dashed border-bottom px-3 py-3">
+            <!-- Replaced avatar image with the same neutral icon (bigger size) -->
+            <i class="ti ti-user-circle avatar avatar-md text-muted" style="font-size: 3rem; line-height: 1;"></i>
+            <div>
+              <h4 class="mb-0 small" id="user-fullname">Chargement...</h4>
+              <p class="mb-0 small" id="user-display">Chargement...</p>
+            </div>
+          </div>
+          <div class="p-3 d-flex flex-column gap-1 small lh-lg">
+            <a href="dashboard"><span>Accueil</span></a>
+            <a href="inventory"><span>Inventaire</span></a>
+            <a href="#" id="logout-btn"><span>Se déconnecter</span></a>
+          </div>
+        </div>
+      </div>
+    </li>
+  </ul>
+</div>
+  </nav>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar">
+    <div class="logo-area">
+     <a href="dashboard" class="d-inline-flex"><img src="./assets/images/logo-icon.svg" alt="" width="24">
+        <span class="logo-text ms-2"> <img src="./assets/images/logo.svg" alt=""></span>
+      </a>
+    </div>
+    <ul class="nav flex-column">
+      <br>
+      <li><a class="nav-link active" href="dashboard"><i class="ti ti-home"></i><span
+            class="nav-text">Tableau de bord</span></a></li>
+      <li><a class="nav-link" href="inventory"><i class="ti ti-box-seam"></i><span
+            class="nav-text">Inventaire</span></a></li>
+           
+    </ul>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main id="content" class="content py-10">
+    <div class="container-fluid">
+      <div class="row ">
+        <div class="col-12">
+          <div class="mb-6">
+            <h1 class="fs-3 mb-1">Tableau de bord</h1>
+            <p>Aperçu</p>
+          </div>
+        </div>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-lg-3 col-12">
+
+       <div class="card p-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-2">
+  <div class="d-flex gap-3">
+    <div class="icon-shape icon-md bg-primary text-white rounded-2">
+      <i class="ti ti-report-analytics fs-4"></i>
+    </div>
+    <div>
+      <h2 class="mb-3 fs-6">Dépenses</h2>
+      <h3 id="depenses-value" class="fw-bold mb-0">Chargement...</h3>
+      <p id="depenses-label" class="text-primary mb-0 small">...</p>
+    </div>
+  </div>
+</div>
+
+        </div>
+        <div class="col-lg-3 col-12">
+
+          <div class="card p-4  bg-success bg-opacity-10 border border-success border-opacity-25 rounded-2">
+
+            <div class="d-flex gap-3 ">
+              <div class="icon-shape icon-md bg-success text-white rounded-2">
+                <i class="ti ti-notes fs-4"></i>
+              </div>
+              <div>
+                <h2 class="mb-3 fs-6">Somme totale par point de vente</h2>
+                <h3 id="somme-value" class="fw-bold mb-0">Chargement...</h3>
+  <p id="somme-label" class="text-success mb-0 small">...</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="col-lg-3 col-12">
+
+          <div class="card p-4  bg-info bg-opacity-10 border border-info border-opacity-25 rounded-2">
+
+            <div class="d-flex gap-3 ">
+              <div class="icon-shape icon-md bg-info text-white rounded-2">
+                <i class="ti ti-notes fs-4"></i>
+              </div>
+              <div>
+                <h2 class="mb-3 fs-6">Achats</h2>
+              <h3 id="achats-value" class="fw-bold mb-0">Chargement...</h3>
+  <p id="achats-label" class="text-info mb-0 small">...</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="col-lg-3 col-12">
+
+          <div class="card p-4  bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-2">
+
+            <div class="d-flex gap-3 ">
+              <div class="icon-shape icon-md bg-warning text-white rounded-2">
+                <i class="ti ti-notes fs-4"></i>
+              </div>
+              <div>
+                <h2 class="mb-3 fs-6">Dettes</h2>
+                <h3 id="dettes-value" class="fw-bold mb-0">Chargement...</h3>
+  <p id="dettes-label" class="text-warning mb-0 small">...</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="col-lg-3 col-12">
+
+          <div class="card p-4  bg-dark bg-opacity-10 border border-dark border-opacity-25 rounded-2">
+
+            <div class="d-flex gap-3 ">
+              <div class="icon-shape icon-md bg-dark text-white rounded-2">
+                <i class="ti ti-notes fs-4"></i>
+              </div>
+              <div>
+                <h2 class="mb-3 fs-6"> MANDELA Versement</h2>
+               <h3 id="mandela-value" class="fw-bold mb-0">Chargement...</h3>
+  <p id="mandela-label" class="text-dark mb-0 small">...</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+     
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-12">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center bg-transparent px-4 py-3">
+              <h3 class="h5 mb-0">Somme reçue vs Dépenses</h3>
+              <div>
+             <select id="filter-chart" class="form-select form-select-sm">
+  <option value="week" selected>Cette semaine</option>
+  <option value="month">Ce mois</option>
+</select>
+              </div>
+            </div>
+            <div class="card-body p-4">
+
+              <div id="salesPurchaseChart"></div>
+               <div class="d-flex justify-content-end">
+               <a href="#" id="download-chart" class="small">Télécharger</a>
+              </div>
+            </div>
+            
+          </div>
+          <br>
+            <div class="row mb-3">
+        <!-- Sales Overview (full width) -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body p-4">
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-2">
+                <div>
+                  <h2 class="mb-0 fs-5">Gains vs Dépenses annuelles</h2>
+                </div>
+               
+              </div>
+
+              <div id="salesChart"></div>
+
+            <div class="d-flex justify-content-end">
+  <a href="#" id="download-chart-annual" class="small">Télécharger</a>
+</div>
+            </div>
+          </div>
+        </div>
+      </div>
+       <!-- Top Products -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body p-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h2 class="mb-0 fs-5">Top 3 points de vente</h2>
+                </div>
+              </div>
+
+            <div id="top-points-vente" class="list-group list-group-flush">
+  <div class="p-3">Chargement...</div>
+</div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="text-center py-2 mt-6 text-secondary ">
+        <p class="mb-0">Copyright © 2026 Inventory APP. Developed by Emmanuel Musafiri</p>
+      </footer>
+    </div>
+  </main>
+
+  <!-- Preloader -->
+  <div id="preloader">
+    <div class="spinner">
+      <div class="spinner-logo">
+        <img src="./assets/images/logo-icon.svg" alt="Chargement" width="40">
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="./assets/js/main.js" type="module"></script>
+
+  <script>
+    window.addEventListener('load', async function () {
+  // Protection session
+    const token = localStorage.getItem('pb_token');
+    if (!token) {
+      window.location.href = '/';
+      return;
+    }
+  
+
+    // Récupérer les données utilisateur
+    const userData = localStorage.getItem('pb_user');
+    if (userData) {
+      const user = JSON.parse(userData);
+
+      // Afficher Prénom + Nom. (ex: Emmanuel M.)
+      const fullName = `${user.firstName || 'Utilisateur'} ${user.lastName ? user.lastName.charAt(0) + '.' : ''}`.trim();
+      document.getElementById('user-fullname').textContent = fullName;
+      document.getElementById('user-display').textContent = fullName; // ou tu peux mettre le rôle si tu veux
+
+      // Si tu veux garder le rôle en dessous (optionnel)
+      document.getElementById('user-display').textContent = user.role === 'admin' ? 'Administrateur' : 'Utilisateur';
+    }
+
+    // Déconnexion
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        localStorage.removeItem('pb_token');
+        localStorage.removeItem('pb_role');
+        localStorage.removeItem('pb_user');
+        window.location.href = '/';
+      });
+    }
+
+    // Preloader
+    const preloader = document.getElementById('preloader');
+    if (preloader) {
+      setTimeout(() => preloader.classList.add('hidden'), 600);
+    }
+   
+ // Charge toutes les cartes en parallèle
+    await Promise.all([
+        loadDepensesTodayYesterday(),
+        loadVentesTodayYesterday(),
+        loadAchatsTodayYesterday(),
+        loadDettesTodayYesterday(),
+        loadMandelaTodayYesterday(),
+          loadTopPointsVente()
+          
+    ]);
+    
+});
+  
+
+  // ── Constantes ────────────────────────────────────────────────────────
+const PB_URL = 'http://127.0.0.1:8090';
+
+// Format monétaire
+function formatCDF(value) {
+    return value.toLocaleString('fr-FR') + ' FC';
+}
+
+// Date → YYYY-MM-DD
+function getDateStr(date) {
+    return date.toISOString().split('T')[0];
+}
+
+async function loadDepensesTodayYesterday() {
+    const depensesValueEl = document.getElementById('depenses-value');
+    const depensesLabelEl = document.getElementById('depenses-label');
+
+    try {
+        const token = localStorage.getItem('pb_token');
+        console.log("Token présent ?", !!token, "(longueur:", token?.length || 0, ")");
+
+        if (!token) {
+            throw new Error("Aucun token dans localStorage");
+        }
+
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const todayStr = today.toISOString().split('T')[0];
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        console.log(`Dates ciblées → Aujourd'hui: ${todayStr} | Hier: ${yesterdayStr}`);
+
+        // Filtre corrigé et très strict
+        const filter = `date>="${yesterdayStr}" && date<="${todayStr} 23:59:59.999"`;
+        const encodedFilter = encodeURIComponent(filter);
+        const url = `${PB_URL}/api/collections/depenses_journalier/records?sort=-date&filter=(${encodedFilter})`;
+
+        console.log("URL complète :", url);
+
+        const res = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        console.log("Réponse HTTP → Status:", res.status, res.statusText);
+
+        if (!res.ok) {
+            const errorBody = await res.text();
+            console.error("Corps de l'erreur :", errorBody);
+            throw new Error(`PocketBase erreur ${res.status} – ${errorBody}`);
+        }
+
+        const json = await res.json();
+        console.log("Données reçues :", json);
+
+        const records = json.items || [];
+        console.log(`Nombre d'enregistrements trouvés : ${records.length}`);
+
+        let total = 0;
+        let label = "Aucune donnée";
+
+        const todayRecord = records.find(r => {
+            const recordDate = new Date(r.date).toISOString().split('T')[0];
+            return recordDate === todayStr;
+        });
+
+        if (todayRecord) {
+            console.log("Entrée AUJOURD'HUI trouvée →", todayRecord);
+
+            // Somme tous les champs numériques (sauf métadonnées)
+            total = Object.entries(todayRecord)
+                .filter(([key, val]) => 
+                    !['id','created','updated','collectionId','collectionName'].includes(key) &&
+                    typeof val === 'number'
+                )
+                .reduce((sum, [, val]) => sum + (val || 0), 0);
+
+            label = "Aujourd'hui";
+        } 
+        else {
+            const yesterdayRecord = records.find(r => {
+                const recordDate = new Date(r.date).toISOString().split('T')[0];
+                return recordDate === yesterdayStr;
+            });
+
+            if (yesterdayRecord) {
+                console.log("Entrée HIER trouvée →", yesterdayRecord);
+
+                total = Object.entries(yesterdayRecord)
+                    .filter(([key, val]) => 
+                        !['id','created','updated','collectionId','collectionName'].includes(key) &&
+                        typeof val === 'number'
+                    )
+                    .reduce((sum, [, val]) => sum + (val || 0), 0);
+
+                label = "Hier";
+            }
+        }
+
+        depensesValueEl.textContent = total.toLocaleString('fr-FR') + ' FC';
+        depensesLabelEl.textContent = label;
+
+    } catch (err) {
+        console.error("ERREUR COMPLÈTE dans loadDepensesTodayYesterday :", err);
+        console.error("Stack trace :", err.stack);
+
+        depensesValueEl.textContent = "—";
+        depensesLabelEl.textContent = "Erreur";
+        depensesLabelEl.title = err.message; // au survol on voit le message
+    }
+}
+
+
+// ────────────────────────────────────────────────
+// SOMME TOTALE REÇUE (ventes_points_vente)
+// ────────────────────────────────────────────────
+async function loadVentesTodayYesterday() {
+    const valueEl = document.getElementById('somme-value');
+    const labelEl = document.getElementById('somme-label');
+
+    try {
+        const token = localStorage.getItem('pb_token');
+        if (!token) throw new Error("Aucun token");
+
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const todayStr = getDateStr(today);
+        const yesterdayStr = getDateStr(yesterday);
+
+        const filter = `date>="${yesterdayStr}" && date<="${todayStr} 23:59:59.999"`;
+        const url = `${PB_URL}/api/collections/ventes_points_vente/records?sort=-date&filter=(${encodeURIComponent(filter)})`;
+
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        const { items } = await res.json();
+        let total = 0;
+        let label = "Aucune donnée";
+
+        const todayRecord = items.find(r => getDateStr(new Date(r.date)) === todayStr);
+
+        if (todayRecord) {
+            total = Object.entries(todayRecord)
+                .filter(([k, v]) => !['id','date','created','updated','collectionId','collectionName'].includes(k) && typeof v === 'number')
+                .reduce((s, [,v]) => s + v, 0);
+            label = "Aujourd'hui";
+        } else {
+            const yestRecord = items.find(r => getDateStr(new Date(r.date)) === yesterdayStr);
+            if (yestRecord) {
+                total = Object.entries(yestRecord)
+                    .filter(([k, v]) => !['id','date','created','updated','collectionId','collectionName'].includes(k) && typeof v === 'number')
+                    .reduce((s, [,v]) => s + v, 0);
+                label = "Hier";
+            }
+        }
+
+        valueEl.textContent = formatCDF(total);
+        labelEl.textContent = label;
+
+    } catch (err) {
+        console.error("Erreur Somme reçue:", err);
+        valueEl.textContent = "0 CDF";
+        labelEl.textContent = "Erreur";
+    }
+}
+
+// ────────────────────────────────────────────────
+// ACHATS
+// ────────────────────────────────────────────────
+async function loadAchatsTodayYesterday() {
+    const valueEl = document.getElementById('achats-value');
+    const labelEl = document.getElementById('achats-label');
+
+    try {
+        const token = localStorage.getItem('pb_token');
+        if (!token) return;
+
+        const todayStr = getDateStr(new Date());
+        const yesterdayStr = getDateStr(new Date(Date.now() - 86400000));
+
+        const filter = `date>="${yesterdayStr}" && date<="${todayStr} 23:59:59.999"`;
+        const url = `${PB_URL}/api/collections/achats_journaliers/records?sort=-date&filter=(${encodeURIComponent(filter)})`;
+
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) throw new Error(await res.text());
+
+        const { items } = await res.json();
+        let total = 0;
+        let label = "Aucune donnée";
+
+        const todayRec = items.find(r => getDateStr(new Date(r.date)) === todayStr);
+        if (todayRec) {
+            total = Object.values(todayRec)
+                .filter(v => typeof v === 'number')
+                .reduce((s, v) => s + v, 0);
+            label = "Aujourd'hui";
+        } else {
+            const yestRec = items.find(r => getDateStr(new Date(r.date)) === yesterdayStr);
+            if (yestRec) {
+                total = Object.values(yestRec)
+                    .filter(v => typeof v === 'number')
+                    .reduce((s, v) => s + v, 0);
+                label = "Hier";
+            }
+        }
+
+        valueEl.textContent = formatCDF(total);
+        labelEl.textContent = label;
+
+    } catch (err) {
+        valueEl.textContent = "0 CDF";
+        labelEl.textContent = "Erreur";
+    }
+}
+
+// ────────────────────────────────────────────────
+// DETTES
+// ────────────────────────────────────────────────
+async function loadDettesTodayYesterday() {
+    const valueEl = document.getElementById('dettes-value');
+    const labelEl = document.getElementById('dettes-label');
+
+    try {
+        const token = localStorage.getItem('pb_token');
+        if (!token) return;
+
+        const todayStr = getDateStr(new Date());
+        const yesterdayStr = getDateStr(new Date(Date.now() - 86400000));
+
+        const filter = `date>="${yesterdayStr}" && date<="${todayStr} 23:59:59.999"`;
+        const url = `${PB_URL}/api/collections/dettes_journalier/records?sort=-date&filter=(${encodeURIComponent(filter)})`;
+
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) throw new Error(await res.text());
+
+        const { items } = await res.json();
+        let total = 0;
+        let label = "Aucune donnée";
+
+        const todayRec = items.find(r => getDateStr(new Date(r.date)) === todayStr);
+        if (todayRec) {
+            total = Object.values(todayRec)
+                .filter(v => typeof v === 'number')
+                .reduce((s, v) => s + v, 0);
+            label = "Aujourd'hui";
+        } else {
+            const yestRec = items.find(r => getDateStr(new Date(r.date)) === yesterdayStr);
+            if (yestRec) {
+                total = Object.values(yestRec)
+                    .filter(v => typeof v === 'number')
+                    .reduce((s, v) => s + v, 0);
+                label = "Hier";
+            }
+        }
+
+        valueEl.textContent = formatCDF(total);
+        labelEl.textContent = label;
+
+    } catch (err) {
+        valueEl.textContent = "0 CDF";
+        labelEl.textContent = "Erreur";
+    }
+}
+
+// ────────────────────────────────────────────────
+// MANDELA → Versement Total (Vanille + Chocolat)
+// ────────────────────────────────────────────────
+async function loadMandelaTodayYesterday() {
+    const valueEl = document.getElementById('mandela-value');
+    const labelEl = document.getElementById('mandela-label');
+
+    try {
+        const token = localStorage.getItem('pb_token');
+        if (!token) throw new Error("Aucun token");
+
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const todayStr = today.toISOString().split('T')[0];
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        const filter = `date>="${yesterdayStr}" && date<="${todayStr} 23:59:59.999"`;
+        const url = `${PB_URL}/api/collections/mandela_journalier/records?sort=-date&filter=(${encodeURIComponent(filter)})`;
+
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        const { items } = await res.json();
+
+        let totalVersement = 0;
+        let label = "Aucune donnée";
+
+        // Cherche d'abord aujourd'hui
+        const todayRecord = items.find(r => {
+            const recordDate = new Date(r.date).toISOString().split('T')[0];
+            return recordDate === todayStr;
+        });
+
+        if (todayRecord) {
+            const vV = Number(todayRecord.nombre_de_pieces_vendues_vanille || 0);
+            const vC = Number(todayRecord.nombre_de_pieces_vendues_chocolat || 0);
+            totalVersement = (vV * 1000) + (vC * 2500);
+            label = "Aujourd'hui";
+        } 
+        else {
+            // Sinon prend hier
+            const yesterdayRecord = items.find(r => {
+                const recordDate = new Date(r.date).toISOString().split('T')[0];
+                return recordDate === yesterdayStr;
+            });
+
+            if (yesterdayRecord) {
+                const vV = Number(yesterdayRecord.nombre_de_pieces_vendues_vanille || 0);
+                const vC = Number(yesterdayRecord.nombre_de_pieces_vendues_chocolat || 0);
+                totalVersement = (vV * 1000) + (vC * 2500);
+                label = "Hier";
+            }
+        }
+
+        valueEl.textContent = totalVersement.toLocaleString('fr-FR') + ' FC';
+        labelEl.textContent = label;
+
+    } catch (err) {
+        console.error("Erreur Mandela Versement:", err);
+        valueEl.textContent = "0 FC";
+        labelEl.textContent = "Erreur";
+    }
+}
+
+// ────────────────────────────────────────────────
+// TOP 3 POINTS DE VENTE (GLOBAL)
+// ────────────────────────────────────────────────
+
+async function loadTopPointsVente() {
+    const container = document.getElementById('top-points-vente');
+
+    // 🔧 Normalisation pour matcher key ↔ name
+    function normalize(str) {
+        return String(str)
+            .toLowerCase()
+            .replace(/\s+/g, '_')   // espaces → _
+            .replace(/[^\w]/g, ''); // supprime caractères spéciaux
+    }
+
+    try {
+        const token = localStorage.getItem('pb_token');
+        if (!token) throw new Error("Aucun token");
+
+        // ────────────────────────────────────────────────
+        // 1. Charger les ventes
+        // ────────────────────────────────────────────────
+        const ventesRes = await fetch(
+            `${PB_URL}/api/collections/ventes_points_vente/records?perPage=200&sort=-date`,
+            {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }
+        );
+
+        if (!ventesRes.ok) throw new Error(await ventesRes.text());
+
+        const { items } = await ventesRes.json();
+
+        // ────────────────────────────────────────────────
+        // 2. Charger les points de vente
+        // ────────────────────────────────────────────────
+        const pvRes = await fetch(
+            `${PB_URL}/api/collections/points_vente/records`,
+            {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }
+        );
+
+        if (!pvRes.ok) throw new Error(await pvRes.text());
+
+        const { items: pointsVente } = await pvRes.json();
+
+        // 🔥 Mapping NORMALISÉ
+        const displayMap = {};
+        pointsVente.forEach(pv => {
+            displayMap[normalize(pv.name)] = pv.display_name;
+        });
+
+        // ────────────────────────────────────────────────
+        // 3. Calcul des totaux
+        // ────────────────────────────────────────────────
+        const totals = {};
+
+        items.forEach(record => {
+            Object.entries(record).forEach(([key, value]) => {
+                if (
+                    !['id','date','created','updated','collectionId','collectionName'].includes(key) &&
+                    typeof value === 'number'
+                ) {
+                    const normalizedKey = normalize(key);
+
+                    if (!totals[normalizedKey]) totals[normalizedKey] = 0;
+                    totals[normalizedKey] += value;
+                }
+            });
+        });
+
+        // ────────────────────────────────────────────────
+        // 4. Trier + Top 3
+        // ────────────────────────────────────────────────
+        const sorted = Object.entries(totals)
+            .map(([key, total]) => ({
+                name: displayMap[key] || key, // ✅ maintenant toujours correct
+                total
+            }))
+            .sort((a, b) => b.total - a.total);
+
+        const top3 = sorted.slice(0, 3);
+
+        // Total global
+        const globalTotal = sorted.reduce((sum, item) => sum + item.total, 0);
+
+        // ────────────────────────────────────────────────
+        // 5. Render
+        // ────────────────────────────────────────────────
+        container.innerHTML = '';
+
+        if (top3.length === 0) {
+            container.innerHTML = `<div class="p-3">Aucune donnée</div>`;
+            return;
+        }
+
+        top3.forEach((item, index) => {
+            const percentage = globalTotal > 0
+                ? ((item.total / globalTotal) * 100).toFixed(1)
+                : 0;
+
+            const badge = ["🥇", "🥈", "🥉"][index] || "";
+
+            container.innerHTML += `
+                <div class="list-group-item p-3 d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">${badge} ${item.name}</h6>
+                                <small class="text-muted">${percentage}% du total</small>
+                            </div>
+                            <div class="text-end">
+                                <strong>${formatCDF(item.total)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+    } catch (err) {
+        console.error("Erreur Top points de vente:", err);
+        container.innerHTML = `<div class="p-3 text-danger">Erreur de chargement</div>`;
+    }
+}
+
+
+
+</script>
+
+</body>
+</html>

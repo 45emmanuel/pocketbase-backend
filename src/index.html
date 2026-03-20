@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Connexion - InApp Inventory Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/images/favicon_io/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon_io/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/images/favicon_io/favicon-16x16.png">
+  <link rel="manifest" href="./assets/images/favicon_io/site.webmanifest">
+  <style>
+  /* Full-page gradient background */
+  body {
+    margin: 0;
+    font-family: 'Helvetica', sans-serif;
+    background: linear-gradient(135deg, #f7f7f7 0%, #e0f0ff 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  /* Card design */
+  .card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 36px rgba(0,0,0,0.15);
+  }
+
+  .card-body {
+    padding: 3rem 2.5rem;
+  }
+
+  /* Title */
+  .card-title {
+    font-weight: 600;
+    color: #333333;
+  }
+
+  /* Input fields */
+  input.form-control {
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    transition: all 0.3s ease;
+  }
+
+  input.form-control:focus {
+    border-color: #E66239;
+    box-shadow: 0 0 8px rgba(230, 98, 57, 0.3);
+    outline: none;
+  }
+
+  /* Button style */
+  .btn-primary {
+    background-color: #E66239;
+    border-color: #E66239;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+
+  .btn-primary:hover {
+    background-color: #d94e20;
+    transform: translateY(-2px);
+  }
+
+  /* Links & small text */
+  .form-check-label, .small {
+    color: #555;
+  }
+
+  /* Preloader tweaks */
+  #preloader {
+    background-color: #ffffff;
+  }
+
+  .spinner::before {
+    border-color: #E66239;
+  }
+
+  .spinner::after {
+    border-color: rgba(230, 98, 57, 0.3);
+  }
+
+  /* Logo in preloader */
+  .spinner-logo img {
+    filter: drop-shadow(0 0 2px rgba(230, 98, 57, 0.5));
+  }
+</style>
+</head>
+
+<body>
+
+<div class="container d-flex align-items-center justify-content-center min-vh-100">
+  <div class="card" style="max-width:420px; width:100%;">
+    <div class="card-body p-5">
+      <div class="text-center mb-3">
+        <a href="/" class="mb-4 d-inline-block">
+          <img src="./assets/images/logo-icon.svg" alt="" width="36">
+          <span class="ms-2"><img src="./assets/images/logo.svg" alt=""></span>
+        </a>
+        <h1 class="card-title mb-5 h5">Connectez-vous à votre compte</h1>
+      </div>
+
+      <form class="needs-validation mt-3" novalidate>
+        <div class="mb-3">
+             <div id="login-error" class="alert alert-danger mt-3 d-none text-center small"></div>
+          <label for="email" class="form-label">Adresse e-mail</label>
+          <input id="email" type="email" class="form-control" placeholder="nom@exemple.com" required autofocus>
+          <div class="invalid-feedback">Veuillez entrer une adresse e-mail valide.</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="password" class="form-label d-flex justify-content-between">
+            <span>Mot de passe</span>
+            
+          </label>
+          <input id="password" type="password" class="form-control" placeholder="Mot de passe" required minlength="6">
+          <div class="invalid-feedback">Veuillez fournir un mot de passe (min. 6 caractères).</div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="form-check">
+            <input id="remember" class="form-check-input" type="checkbox">
+            <label class="form-check-label small" for="remember">Se souvenir de moi</label>
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-100" type="submit">Se connecter</button>
+     
+      </form>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- Bootstrap JS -->
+<script src="./assets/js/main.js" type="module"></script>
+
+<script>
+  // === POCKETBASE CONNEXION ===
+  const PB_URL = 'http://127.0.0.1:8090';
+
+  // Vérifier si déjà connecté → redirection automatique
+  async function checkLogin() {
+    const token = localStorage.getItem('pb_token');
+    if (token) {
+      window.location.href = 'dashboard';
+    }
+  }
+  checkLogin();
+
+  // Gestion du formulaire de connexion
+  const form = document.querySelector('form');
+  const errorDiv = document.getElementById('login-error');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorDiv.classList.add('d-none');
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    const btn = form.querySelector('button');
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Connexion en cours...';
+
+    try {
+      const res = await fetch(`${PB_URL}/api/collections/users/auth-with-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error('Email ou mot de passe incorrect');
+      }
+
+      // Succès → sauvegarde session
+      localStorage.setItem('pb_token', data.token);
+      localStorage.setItem('pb_role', data.record.role);
+      localStorage.setItem('pb_user', JSON.stringify(data.record));
+
+      window.location.href = 'dashboard';
+
+    } catch (err) {
+      errorDiv.textContent = err.message; // → "Email ou mot de passe incorrect"
+      errorDiv.classList.remove('d-none');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  });
+</script>
+
+<script>
+  // Fade preloader
+  window.addEventListener('load', function() {
+    const preloader = document.getElementById('preloader');
+    if (preloader) {
+      setTimeout(() => preloader.classList.add('hidden'), 600);
+    }
+  });
+</script>
+
+</body>
+</html>

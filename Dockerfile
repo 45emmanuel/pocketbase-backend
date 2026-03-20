@@ -1,19 +1,15 @@
-FROM debian:stable-slim
-
+# Use a minimal Linux base
+FROM alpine:latest
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y unzip wget
+# Copy your exact PocketBase binary (the one you run locally)
+COPY pocketbase /app/pocketbase
+RUN chmod +x /app/pocketbase
 
-# Download PocketBase binary
-RUN wget https://github.com/pocketbase/pocketbase/releases/download/v0.22.0/pocketbase_0.22.0_linux_amd64.zip \
-    && unzip pocketbase_0.22.0_linux_amd64.zip \
-    && chmod +x pocketbase
-
-# Copy local DB + uploads
+# Copy your existing database folder
 COPY pb_data /app/pb_data
 
-# Expose Render port
-EXPOSE 8080
+EXPOSE 8090
 
-# Run PocketBase
-CMD ["sh", "-c", "./pocketbase serve --http=0.0.0.0:$PORT --dir=/app/pb_data"]
+# Start PocketBase
+CMD ["./pocketbase", "serve", "--http=0.0.0.0:$PORT", "--dir=/app/pb_data"]

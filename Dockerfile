@@ -16,4 +16,4 @@ COPY pb_data /app/pb_data
 EXPOSE 8080
 
 # Run PocketBase
-CMD ["sh", "-c", "./pocketbase serve --http=0.0.0.0:$PORT --dir=/app/pb_data --cors=*"]
+CMD ["sh", "-c", "./pocketbase serve --http=0.0.0.0:$PORT --dir=/app/pb_data"]
